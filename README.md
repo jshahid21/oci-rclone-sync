@@ -10,11 +10,15 @@ OCI Object Storage     →  Events  →  OCI Function  →  AWS S3
                             │       AWS creds from Vault)
 ```
 
+## Why OpenTofu?
+
+OpenTofu is the preferred IaC tool for OCI due to licensing alignment. Oracle recommends OpenTofu for Oracle Cloud deployments; it is fully compatible with Terraform configuration and the OCI provider.
+
 ## Prerequisites
 
 | Tool | Purpose |
 |------|---------|
-| Terraform >= 1.0 | Infrastructure |
+| OpenTofu >= 1.5 | Infrastructure |
 | OCI CLI | Auth & Object Storage |
 | Docker | Build function images |
 | Fn CLI | Deploy OCI Functions |
@@ -28,11 +32,13 @@ OCI Object Storage     →  Events  →  OCI Function  →  AWS S3
 
 ```bash
 # macOS
-brew install terraform
+brew install opentofu
 brew install oci-cli
 brew install --cask docker    # Then: open -a Docker
 brew install fn
 ```
+
+OpenTofu: [Installation Guide](https://opentofu.org/docs/intro/install/)
 
 ### 2. Configure OCI
 
@@ -51,7 +57,7 @@ key_file=~/.oci/oci_api_key.pem
 
 Verify: `oci iam region list`
 
-### 3. Configure Terraform Variables
+### 3. Configure Variables
 
 ```bash
 cd infra
@@ -63,15 +69,15 @@ cp terraform.tfvars.example terraform.tfvars
 #   existing_bucket_namespace (oci os ns get), source_bucket_name
 ```
 
-Or run: `./scripts/setup.sh` (creates tfvars, runs `terraform init`)
+Or run: `./scripts/setup.sh` (creates tfvars, runs `tofu init`)
 
 ### 4. Apply Infrastructure
 
 ```bash
 cd infra
-terraform init
-terraform plan
-terraform apply
+tofu init
+tofu plan
+tofu apply
 ```
 
 Note compartment OCID from output for Step 6.
@@ -92,7 +98,7 @@ docker login us-ashburn-1.ocir.io
 
 ```bash
 # From project root
-OCI_COMPARTMENT_ID=$(cd infra && terraform output -raw compartment_id) ./scripts/configure-fn-oci.sh
+OCI_COMPARTMENT_ID=$(cd infra && tofu output -raw compartment_id) ./scripts/configure-fn-oci.sh
 
 cd functions
 fn deploy --app oci-aws-firehose
@@ -100,14 +106,14 @@ fn deploy --app oci-aws-firehose
 
 ### 7. Sync Function Image (if needed)
 
-If Terraform created the function with a placeholder image, add the deployed image to `infra/terraform.tfvars` and re-apply:
+If OpenTofu created the function with a placeholder image, add the deployed image to `infra/terraform.tfvars` and re-apply:
 
 ```hcl
 function_image = "us-ashburn-1.ocir.io/<namespace>/oci-aws-firehose/firehose-handler:0.0.1"
 ```
 
 ```bash
-cd infra && terraform apply
+cd infra && tofu apply
 ```
 
 ### 8. Test
@@ -123,7 +129,7 @@ Verify the file appears in the AWS S3 bucket.
 
 ## Create vs Use Existing
 
-Each resource can be created by Terraform or use an existing one. Set `create_X = true` to create, or `create_X = false` with `existing_X_id` to use existing.
+Each resource can be created by OpenTofu or use an existing one. Set `create_X = true` to create, or `create_X = false` with `existing_X_id` to use existing.
 
 | Resource | Create | Use Existing |
 |----------|--------|---------------|
@@ -142,7 +148,7 @@ See `infra/terraform.tfvars.example` for full examples (greenfield and brownfiel
 
 ```
 oci-aws-firehose/
-├── infra/           # Terraform (main.tf, variables.tf, outputs.tf)
+├── infra/           # OpenTofu (main.tf, variables.tf, outputs.tf)
 ├── functions/       # Python handler (func.py, func.yaml)
 ├── config/          # OCI config template
 ├── scripts/         # setup.sh, configure-fn-oci.sh, check-prereqs.sh

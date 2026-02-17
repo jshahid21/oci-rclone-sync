@@ -1,3 +1,8 @@
+# -----------------------------------------------------------------------------
+# OpenTofu / Terraform compatibility: This configuration works with both
+# `tofu` and `terraform` binaries. Providers from registry.terraform.io are
+# fully compatible with OpenTofu via the registry shim.
+# -----------------------------------------------------------------------------
 terraform {
   required_version = ">= 1.5"
 
