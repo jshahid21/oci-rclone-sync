@@ -1,5 +1,5 @@
 # =============================================================================
-# OCI AWS Firehose - Outputs
+# OCI-to-AWS Sync - Outputs
 # Final resolved IDs for reference and downstream use
 # =============================================================================
 

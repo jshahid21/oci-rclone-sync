@@ -1,6 +1,7 @@
 # =============================================================================
-# OCI AWS Firehose - Main Infrastructure
-# Hybrid Create vs Use Existing pattern for all major resources
+# OCI-to-AWS Sync - Shared Infrastructure (Deprecated)
+# Hybrid Create vs Use Existing pattern
+# For OCI Usage Reports → AWS S3, use oci-rclone-sync project
 # =============================================================================
 
 # -----------------------------------------------------------------------------
@@ -40,7 +41,7 @@ resource "oci_core_vcn" "this" {
 
   compartment_id = local.compartment_id
   cidr_block     = var.vcn_cidr
-  display_name   = "firehose-vcn"
+  display_name   = "oci-aws-sync-vcn"
   dns_label      = var.vcn_dns_label
 
   lifecycle {
@@ -56,7 +57,7 @@ resource "oci_core_nat_gateway" "this" {
 
   compartment_id = local.compartment_id
   vcn_id         = local.vcn_id
-  display_name   = "firehose-nat"
+  display_name   = "oci-aws-sync-nat"
 }
 
 # -----------------------------------------------------------------------------
@@ -67,7 +68,7 @@ resource "oci_core_service_gateway" "this" {
 
   compartment_id = local.compartment_id
   vcn_id         = local.vcn_id
-  display_name   = "firehose-sgw"
+  display_name   = "oci-aws-sync-sgw"
   services {
     service_id = data.oci_core_services.object_storage.services[0].id
   }
@@ -89,7 +90,7 @@ resource "oci_core_route_table" "private" {
 
   compartment_id = local.compartment_id
   vcn_id         = local.vcn_id
-  display_name   = "firehose-private-rt"
+  display_name   = "oci-aws-sync-private-rt"
 
   dynamic "route_rules" {
     for_each = local.nat_gateway_id != "" ? [1] : []
@@ -118,7 +119,7 @@ resource "oci_core_security_list" "private" {
 
   compartment_id = local.compartment_id
   vcn_id         = local.vcn_id
-  display_name   = "firehose-private-sl"
+  display_name   = "oci-aws-sync-private-sl"
 
   egress_security_rules {
     destination = "0.0.0.0/0"
@@ -142,7 +143,7 @@ resource "oci_core_subnet" "this" {
   compartment_id             = local.compartment_id
   vcn_id                     = local.vcn_id
   cidr_block                 = var.subnet_cidr
-  display_name               = "firehose-private-subnet"
+  display_name               = "oci-aws-sync-private-subnet"
   dns_label                  = var.subnet_dns_label
   prohibit_public_ip_on_vnic  = true
   route_table_id             = (local.nat_gateway_id != "" || local.sgw_id != "") ? oci_core_route_table.private[0].id : null
@@ -160,7 +161,7 @@ resource "oci_kms_vault" "this" {
   count = var.create_vault ? 1 : 0
 
   compartment_id = local.compartment_id
-  display_name   = "firehose-vault"
+  display_name   = "oci-aws-sync-vault"
   vault_type     = var.vault_type
 
   lifecycle {
@@ -175,7 +176,7 @@ resource "oci_kms_key" "this" {
   count = var.create_key ? 1 : 0
 
   compartment_id      = local.compartment_id
-  display_name        = "firehose-key"
+  display_name        = "oci-aws-sync-key"
   management_endpoint = local.vault_management_endpoint
   key_shape {
     algorithm = "AES"
@@ -209,7 +210,7 @@ resource "oci_vault_secret" "aws_access_key" {
   count = var.create_aws_secrets ? 1 : 0
 
   compartment_id = local.compartment_id
-  secret_name    = "firehose-aws-access-key"
+  secret_name    = "oci-aws-sync-aws-access-key"
   vault_id       = local.vault_id
   key_id         = local.key_id
   secret_content {
@@ -222,7 +223,7 @@ resource "oci_vault_secret" "aws_secret_key" {
   count = var.create_aws_secrets ? 1 : 0
 
   compartment_id = local.compartment_id
-  secret_name    = "firehose-aws-secret-key"
+  secret_name    = "oci-aws-sync-aws-secret-key"
   vault_id       = local.vault_id
   key_id         = local.key_id
   secret_content {

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Setup Terraform, OCI config, and tfvars for OCI-AWS Firehose deployment
+# Setup OpenTofu, OCI config, and tfvars for OCI-to-AWS Sync
 
 set -e
 
@@ -8,7 +8,7 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 INFRA_DIR="$PROJECT_ROOT/infra"
 CONFIG_DIR="$PROJECT_ROOT/config"
 
-echo "=== OCI-AWS Firehose Setup ==="
+echo "=== OCI-to-AWS Sync Setup ==="
 echo "Project root: $PROJECT_ROOT"
 echo ""
 

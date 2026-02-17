@@ -1,51 +1,53 @@
 # =============================================================================
-# OCI AWS Firehose - terraform.tfvars.example
+# OCI-to-AWS Sync - Shared Infrastructure (Deprecated)
 # Copy to terraform.tfvars and customize
+#
+# NOTE: This project is deprecated. For OCI Usage Reports → AWS S3 sync,
+# use the oci-rclone-sync project instead. This tfvars is for tear-down only
+# or if you need to provision shared infra for other purposes.
 # =============================================================================
 
-region        = "us-ashburn-1"
-tenancy_ocid  = "ocid1.tenancy.oc1..aaaaaaaa..."
+region       = "us-ashburn-1"
+tenancy_ocid = "ocid1.tenancy.oc1..aaaa..."
 
 # -----------------------------------------------------------------------------
-# Greenfield: Create new compartment
+# Compartment
 # -----------------------------------------------------------------------------
-create_compartment     = true
+create_compartment      = true
 existing_compartment_id = ""
-compartment_name      = "firehose-compartment"
+compartment_name        = "oci-aws-sync"
 
 # -----------------------------------------------------------------------------
-# Greenfield: Create new network (VCN, subnet, NAT, Service Gateway)
-# Brownfield: Set create_* = false and provide existing_*_id
+# Network: create_* = true for greenfield; false + existing_*_id for brownfield
 # -----------------------------------------------------------------------------
-create_vcn               = true
-existing_vcn_id          = ""
-create_subnet            = true
-existing_subnet_id       = ""
-create_nat_gateway       = true
-existing_nat_gateway_id  = ""
+create_vcn                = true
+existing_vcn_id           = ""
+create_subnet             = true
+existing_subnet_id        = ""
+create_nat_gateway        = true
+existing_nat_gateway_id   = ""
 create_service_gateway   = true
 existing_service_gateway_id = ""
 
 # -----------------------------------------------------------------------------
-# Vault: Create new or use existing
+# Vault: Create or use existing
 # -----------------------------------------------------------------------------
-create_vault   = true
+create_vault      = true
 existing_vault_id = ""
-create_key     = true
-existing_key_id = ""
+create_key       = true
+existing_key_id  = ""
 
 # -----------------------------------------------------------------------------
-# AWS Credentials: Create secrets in Vault or use existing secret OCIDs
-# When create_aws_secrets = true, set aws_access_key and aws_secret_key
+# AWS Credentials (stored in OCI Vault)
 # -----------------------------------------------------------------------------
-create_aws_secrets            = true
+create_aws_secrets                = true
 existing_aws_access_key_secret_id = ""
 existing_aws_secret_key_secret_id = ""
-# aws_access_key = "AKIA..."      # Uncomment and set when create_aws_secrets = true
-# aws_secret_key = "your-secret"  # Uncomment and set when create_aws_secrets = true
+# aws_access_key = "AKIA..."      # Uncomment when create_aws_secrets = true
+# aws_secret_key = "your-secret"  # Uncomment when create_aws_secrets = true
 
 # -----------------------------------------------------------------------------
-# AWS Destination
+# AWS Destination (for secret naming; no direct consumer in this project)
 # -----------------------------------------------------------------------------
 aws_s3_bucket_name = "my-aws-cost-reports"
 aws_s3_prefix      = "oci-sync"

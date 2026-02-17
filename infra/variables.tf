@@ -1,5 +1,5 @@
 # =============================================================================
-# OCI AWS Firehose - Hybrid Create vs Use Existing Variables
+# OCI-to-AWS Sync - Hybrid Create vs Use Existing Variables
 # =============================================================================
 
 variable "region" {
@@ -16,7 +16,7 @@ variable "tenancy_ocid" {
 # Compartment
 # -----------------------------------------------------------------------------
 variable "create_compartment" {
-  description = "Create a new compartment for Firehose resources"
+  description = "Create a new compartment for OCI-to-AWS sync resources"
   type        = bool
   default     = false
 }
@@ -30,13 +30,13 @@ variable "existing_compartment_id" {
 variable "compartment_name" {
   description = "Name for the compartment when create_compartment is true"
   type        = string
-  default     = "firehose-compartment"
+  default     = "oci-aws-sync"
 }
 
 variable "compartment_description" {
   description = "Description for the compartment"
   type        = string
-  default     = "Compartment for OCI-to-AWS Firehose pipeline"
+  default     = "Compartment for OCI-to-AWS sync"
 }
 
 # -----------------------------------------------------------------------------
@@ -63,7 +63,7 @@ variable "vcn_cidr" {
 variable "vcn_dns_label" {
   description = "DNS label for VCN"
   type        = string
-  default     = "firehosevcn"
+  default     = "ociawssync"
 }
 
 variable "create_subnet" {
@@ -87,7 +87,7 @@ variable "subnet_cidr" {
 variable "subnet_dns_label" {
   description = "DNS label for subnet"
   type        = string
-  default     = "firehosesubnet"
+  default     = "ociawssyncsub"
 }
 
 # -----------------------------------------------------------------------------

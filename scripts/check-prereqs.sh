@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Check prerequisites for deploying OCI-AWS Firehose
+# Check prerequisites for OCI-to-AWS Sync
 
 set -e
 
