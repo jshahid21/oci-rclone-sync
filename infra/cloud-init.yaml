@@ -32,13 +32,15 @@ runcmd:
     rclone version
 
     # 3. Create rclone.conf (OCI: instance_principal_auth, namespace=bling; AWS: env_auth)
+    #    Cost Reports live in Oracle-owned namespace "bling", not your tenancy.
     mkdir -p /root/.config/rclone
     cat > /root/.config/rclone/rclone.conf << 'RCLONE_EOF'
     [oci_usage]
     type = oracleobjectstorage
-    namespace = bling
-    region = us-ashburn-1
     provider = instance_principal_auth
+    namespace = bling
+    compartment = ${tenancy_ocid}
+    region = ${region}
 
     [aws_s3]
     type = s3
