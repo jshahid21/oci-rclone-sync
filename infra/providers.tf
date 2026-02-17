@@ -15,5 +15,8 @@ terraform {
 }
 
 provider "oci" {
-  region = var.region
+  # Use credentials from ~/.oci/config (DEFAULT profile)
+  # OCI config contains: user, fingerprint, key_file, tenancy, region
+  config_file_profile = "DEFAULT"
+  region              = var.region
 }

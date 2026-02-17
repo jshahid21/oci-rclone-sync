@@ -12,7 +12,7 @@ A "Set and Forget" utility that syncs Oracle Cloud Usage Reports (Cross-Tenancy)
 
 1. **OpenTofu:** `brew install opentofu`
 2. **AWS:** An IAM User with `s3:PutObject` permission. Keep Access Key and Secret Key ready.
-3. **OCI:** Permissions to manage Compute, Network, and Vault.
+3. **OCI:** Permissions to manage Compute, Network, and Vault. Auth uses `~/.oci/config` (DEFAULT profile). Set `region` and `tenancy_ocid` in `terraform.tfvars` to match your OCI config.
 
 ## Greenfield vs Brownfield
 

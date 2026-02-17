@@ -4,14 +4,14 @@
 # =============================================================================
 
 region       = "us-ashburn-1"
-tenancy_ocid = "ocid1.tenancy.oc1..aaaa..."
+tenancy_ocid = "ocid1.tenancy.oc1..aaaaaaaanbk2i725ziwwdcm5kzlbsfyphavyyvschztru2jvcrekpnnfbzma"
 
 # -----------------------------------------------------------------------------
 # Compartment
 # -----------------------------------------------------------------------------
 create_compartment      = true
-existing_compartment_id = ""
-compartment_name        = "oci-aws-sync"
+existing_compartment_id = "ocid1.compartment.oc1..aaaaaaaahrcle67xhfzi42ymeaparjucv2qqovb6cddtkjbpejoorwvnhd2a"
+compartment_name        = ""
 
 # -----------------------------------------------------------------------------
 # Network: create_* = true for greenfield; false + existing_*_id for brownfield
