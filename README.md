@@ -1,6 +1,6 @@
-# OCI-to-AWS Cost Report Sync
+# oci-rclone-sync
 
-Syncs Oracle Cloud Usage Reports to AWS S3 via a VM running rclone (cron every 6h).
+OCI-to-AWS Cost Report Sync — syncs Oracle Cloud Usage Reports to AWS S3 via a VM running rclone (cron every 6h).
 
 **Stack:** OpenTofu · OCI (VCN, NAT, Service Gateway, Vault, Compute) · Instance Principals · Rclone
 
