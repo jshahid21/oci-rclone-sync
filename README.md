@@ -1,231 +1,140 @@
-# OCI-to-AWS Firehose Pipeline
+# OCI-to-AWS Firehose
 
-A production-ready **Serverless Firehose** that streams files from OCI Object Storage to AWS S3 immediately upon creation. Uses OCI Events to trigger an OCI Function, which streams data directly (zero-disk) using `boto3.upload_fileobj`.
+Streams files from OCI Object Storage to AWS S3 on object creation. OCI Events triggers an OCI Function that streams directly (zero-disk) via `boto3.upload_fileobj`.
 
 ## Architecture
 
 ```
-OCI Object Storage (oci-cost-reports)
-         │
-         │  Object Create Event
-         ▼
-   OCI Events Service
-         │
-         │  Triggers
-         ▼
-   OCI Function (Python)
-   - Resource Principals (no API keys)
-   - AWS creds from OCI Vault
-   - Stream: get_object → upload_fileobj (no disk)
-         │
-         ▼
-   AWS S3 Bucket
+OCI Object Storage     →  Events  →  OCI Function  →  AWS S3
+(oci-cost-reports)         │      (Resource Principals,
+                            │       AWS creds from Vault)
 ```
 
 ## Prerequisites
 
-- **OCI:** Terraform, OCI CLI, Fn CLI (`fn`), Docker
-- **AWS:** S3 bucket, IAM user with `s3:PutObject` (keys stored in OCI Vault)
-- **Terraform:** OCI Provider >= 5.0
-
-## Hybrid Terraform: Create vs Use Existing
-
-Every major resource supports **either** creating new **or** using existing:
-
-| Resource   | Create Variable       | Use Existing Variable       |
-|-----------|------------------------|------------------------------|
-| Compartment | `create_compartment`  | `existing_compartment_id`    |
-| VCN       | `create_vcn`          | `existing_vcn_id`            |
-| Subnet    | `create_subnet`       | `existing_subnet_id`         |
-| NAT Gateway | `create_nat_gateway` | `existing_nat_gateway_id`   |
-| Service Gateway | `create_service_gateway` | `existing_service_gateway_id` |
-| Vault     | `create_vault`        | `existing_vault_id`          |
-| KMS Key   | `create_key`          | `existing_key_id`            |
-| AWS Secrets | `create_aws_secrets` | `existing_aws_access_key_secret_id` / `existing_aws_secret_key_secret_id` |
-| Bucket    | `create_bucket`       | `existing_bucket_namespace` + `source_bucket_name` |
-| Function App | `create_function_app` | `existing_function_app_id` + `existing_function_id` |
-
-**Pattern:** For each component, set `create_X = true` to create, or `create_X = false` and provide `existing_X_id`.
+| Tool | Purpose |
+|------|---------|
+| Terraform >= 1.0 | Infrastructure |
+| OCI CLI | Auth & Object Storage |
+| Docker | Build function images |
+| Fn CLI | Deploy OCI Functions |
+| AWS | S3 bucket; IAM user with `s3:PutObject` |
 
 ---
 
-## Example: Greenfield (Create Everything)
+## Implementation Steps
 
-Use when you want Terraform to provision the full stack.
-
-**`terraform.tfvars`:**
-
-```hcl
-region   = "us-ashburn-1"
-tenancy_ocid = "ocid1.tenancy.oc1..aaaaaaaa..."
-
-# Create new compartment
-create_compartment   = true
-existing_compartment_id = ""
-
-# Create new network
-create_vcn           = true
-existing_vcn_id      = ""
-create_subnet        = true
-existing_subnet_id   = ""
-create_nat_gateway   = true
-existing_nat_gateway_id = ""
-create_service_gateway = true
-existing_service_gateway_id = ""
-
-# Create new Vault and Key
-create_vault = true
-existing_vault_id = ""
-create_key   = true
-existing_key_id = ""
-
-# Create AWS secrets in Vault (provide keys)
-create_aws_secrets = true
-existing_aws_access_key_secret_id = ""
-existing_aws_secret_key_secret_id = ""
-aws_access_key = "AKIA..."
-aws_secret_key = "your-secret-key"
-
-# Use existing bucket (or create with create_bucket = true)
-create_bucket = false
-existing_bucket_namespace = "your-tenancy-namespace"
-source_bucket_name = "oci-cost-reports"
-
-# Create Function App
-create_function_app = true
-existing_function_app_id = ""
-existing_function_id = ""
-
-# Events
-create_event_rule = true
-
-# AWS destination
-aws_s3_bucket_name = "my-aws-cost-reports"
-aws_s3_prefix     = "oci-sync"
-aws_region        = "us-east-1"
-```
-
----
-
-## Example: Brownfield (Use Existing Resources)
-
-Use when you already have VCN, subnet, Vault, and want to attach the Firehose.
-
-**`terraform.tfvars`:**
-
-```hcl
-region   = "us-ashburn-1"
-tenancy_ocid = "ocid1.tenancy.oc1..aaaaaaaa..."
-
-# Use existing compartment
-create_compartment   = false
-existing_compartment_id = "ocid1.compartment.oc1..aaaaaaaa..."
-
-# Use existing network (assume route tables and gateways are configured)
-create_vcn           = false
-existing_vcn_id      = "ocid1.vcn.oc1.iad.aaaaaaa..."
-
-create_subnet        = false
-existing_subnet_id   = "ocid1.subnet.oc1.iad.aaaaaaa..."
-
-create_nat_gateway   = false
-existing_nat_gateway_id = ""
-
-create_service_gateway = false
-existing_service_gateway_id = ""
-
-# Use existing Vault and Key
-create_vault = false
-existing_vault_id = "ocid1.vault.oc1.iad.aaaaaaa..."
-create_key   = false
-existing_key_id = "ocid1.key.oc1.iad.aaaaaaa..."
-
-# Use existing AWS secrets (already in Vault)
-create_aws_secrets = false
-existing_aws_access_key_secret_id = "ocid1.vaultsecret.oc1.iad.aaaaaaa..."
-existing_aws_secret_key_secret_id = "ocid1.vaultsecret.oc1.iad.bbbbbbb..."
-
-# Use existing bucket
-create_bucket = false
-existing_bucket_namespace = "axabcdefghij"
-source_bucket_name = "oci-cost-reports"
-
-# Create new Function App in existing subnet
-create_function_app = true
-existing_function_app_id = ""
-existing_function_id = ""
-
-create_event_rule = true
-
-aws_s3_bucket_name = "my-aws-cost-reports"
-aws_s3_prefix     = ""
-aws_region        = "us-east-1"
-```
-
----
-
-## Deployment Steps
-
-### 1. Configure Terraform
-
-Copy the example and adjust:
+### 1. Install Tools
 
 ```bash
-cd oci-aws-firehose/infra
+# macOS
+brew install terraform
+brew install oci-cli
+brew install --cask docker    # Then: open -a Docker
+brew install fn
+```
+
+### 2. Configure OCI
+
+- **OCI Console** → Profile → User Settings → API Keys → Add API Key
+- Download private key → save as `~/.oci/oci_api_key.pem`
+- Create `~/.oci/config`:
+
+```ini
+[DEFAULT]
+user=ocid1.user.oc1..aaaa...
+fingerprint=aa:bb:cc:dd:...
+tenancy=ocid1.tenancy.oc1..aaaa...
+region=us-ashburn-1
+key_file=~/.oci/oci_api_key.pem
+```
+
+Verify: `oci iam region list`
+
+### 3. Configure Terraform Variables
+
+```bash
+cd infra
 cp terraform.tfvars.example terraform.tfvars
-# Edit terraform.tfvars with your values
+# Edit terraform.tfvars with:
+#   tenancy_ocid, region
+#   aws_access_key, aws_secret_key (if create_aws_secrets = true)
+#   aws_s3_bucket_name, aws_region
+#   existing_bucket_namespace (oci os ns get), source_bucket_name
 ```
 
-### 2. Apply Infrastructure
+Or run: `./scripts/setup.sh` (creates tfvars, runs `terraform init`)
+
+### 4. Apply Infrastructure
 
 ```bash
+cd infra
 terraform init
 terraform plan
 terraform apply
 ```
 
-### 3. Deploy the Function
+Note compartment OCID from output for Step 6.
 
-Configure OCI Registry auth for Fn, then deploy:
+### 5. Authenticate to OCIR
+
+- **OCI Console** → Profile → Auth Tokens → Generate Token
+- Docker login:
 
 ```bash
-# One-time: create Docker registry secret
-# Get your OCI Auth Token: OCI CLI → User Settings → Auth Tokens
-fn create context oci --provider oracle
-fn use context oci
-fn update context oracle.compartment-id <compartment_ocid>
-fn update context oracle.registry <region>.ocir.io/<tenancy_namespace>/oci-aws-firehose
+oci os ns get --query 'data' --raw-output   # Get namespace
+docker login us-ashburn-1.ocir.io
+# Username: <namespace>/<oci_username>
+# Password: <auth_token>
+```
 
-cd ../functions
+### 6. Configure Fn and Deploy Function
+
+```bash
+# From project root
+OCI_COMPARTMENT_ID=$(cd infra && terraform output -raw compartment_id) ./scripts/configure-fn-oci.sh
+
+cd functions
 fn deploy --app oci-aws-firehose
 ```
 
-### 4. Update Terraform with Function Image (if needed)
+### 7. Sync Function Image (if needed)
 
-If Terraform created the function with a placeholder image, `fn deploy` updates it. Otherwise, set `function_image` in tfvars to the actual OCIR image and re-apply to sync config:
+If Terraform created the function with a placeholder image, add the deployed image to `infra/terraform.tfvars` and re-apply:
 
 ```hcl
-function_image = "us-ashburn-1.ocir.io/axabcdefghij/oci-aws-firehose/firehose-handler:0.0.1"
+function_image = "us-ashburn-1.ocir.io/<namespace>/oci-aws-firehose/firehose-handler:0.0.1"
 ```
 
-### 5. Test
+```bash
+cd infra && terraform apply
+```
 
-Upload an object to the OCI bucket:
+### 8. Test
 
 ```bash
+echo "test" > test.csv
 oci os object put -bn oci-cost-reports --file test.csv --name reports/test.csv
 ```
 
-Verify the object appears in the AWS S3 bucket.
+Verify the file appears in the AWS S3 bucket.
 
 ---
 
-## Security
+## Create vs Use Existing
 
-- **Identity:** OCI Resource Principals (Dynamic Group) — no hardcoded OCI API keys
-- **AWS Credentials:** Stored in OCI Vault, retrieved at runtime by the function
-- **Network:** Function runs in a private subnet with NAT (AWS) and Service Gateway (OCI Object Storage)
-- **Zero-Disk:** Data is streamed directly from OCI to S3; nothing is written to the function's filesystem
+Each resource can be created by Terraform or use an existing one. Set `create_X = true` to create, or `create_X = false` with `existing_X_id` to use existing.
+
+| Resource | Create | Use Existing |
+|----------|--------|---------------|
+| Compartment | `create_compartment` | `existing_compartment_id` |
+| VCN / Subnet | `create_vcn`, `create_subnet` | `existing_vcn_id`, `existing_subnet_id` |
+| Vault / Key | `create_vault`, `create_key` | `existing_vault_id`, `existing_key_id` |
+| AWS Secrets | `create_aws_secrets` | `existing_aws_access_key_secret_id`, `existing_aws_secret_key_secret_id` |
+| Bucket | `create_bucket` | `existing_bucket_namespace`, `source_bucket_name` |
+| Function App | `create_function_app` | `existing_function_app_id`, `existing_function_id` |
+
+See `infra/terraform.tfvars.example` for full examples (greenfield and brownfield).
 
 ---
 
@@ -233,17 +142,21 @@ Verify the object appears in the AWS S3 bucket.
 
 ```
 oci-aws-firehose/
-├── infra/
-│   ├── main.tf        # Resources with create vs existing logic
-│   ├── variables.tf   # Booleans and existing IDs
-│   ├── outputs.tf     # Resolved IDs
-│   └── provider.tf
-├── functions/
-│   ├── func.py        # Handler with streaming logic
-│   ├── func.yaml      # Fn Project config
-│   └── requirements.txt
-└── README.md
+├── infra/           # Terraform (main.tf, variables.tf, outputs.tf)
+├── functions/       # Python handler (func.py, func.yaml)
+├── config/          # OCI config template
+├── scripts/         # setup.sh, configure-fn-oci.sh, check-prereqs.sh
+└── docs/            # DEPLOY.md, FN-DOCKER-SETUP.md
 ```
+
+---
+
+## Security
+
+- **OCI:** Resource Principals (Dynamic Group) — no API keys in code
+- **AWS:** Credentials in OCI Vault, fetched at runtime
+- **Network:** Function in private subnet (NAT → AWS, Service Gateway → OCI)
+- **Data:** Streamed OCI → S3; nothing written to disk
 
 ---
 
@@ -251,8 +164,9 @@ oci-aws-firehose/
 
 | Issue | Check |
 |-------|-------|
-| Auth failed / Dynamic Group | Policy allows `fnfunc` in compartment; Dynamic Group matching rule includes your function |
-| Cannot read Vault secret | Policy allows `manage vault-secrets` and `use keys` for the vault/key |
-| No internet (AWS) | Private subnet route table routes `0.0.0.0/0` → NAT Gateway |
+| Auth failed | Dynamic Group policy includes `fnfunc` in compartment |
+| Vault access | Policy allows `manage vault-secrets` and `use keys` |
+| No AWS egress | Route table: `0.0.0.0/0` → NAT Gateway |
 | No OCI Object Storage | Service Gateway route for Object Storage CIDR |
-| Event not firing | Events rule `resourceName` matches bucket name; rule is enabled |
+| Event not firing | Events rule `resourceName` matches bucket; rule enabled |
+| `fn deploy` fails | Run `docker login <region>.ocir.io` |
