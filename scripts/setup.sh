@@ -48,15 +48,15 @@ else
 fi
 echo ""
 
-# 3. terraform.tfvars
-echo "--- Terraform variables ---"
+# 3. tofu.tfvars / terraform.tfvars
+echo "--- OpenTofu variables ---"
 TFVARS="$INFRA_DIR/terraform.tfvars"
 if [[ ! -f "$TFVARS" ]]; then
   cp "$INFRA_DIR/terraform.tfvars.example" "$TFVARS"
   echo "Created $TFVARS from example"
   echo "  Edit with your: tenancy_ocid, AWS credentials, bucket names, etc."
 else
-  echo "terraform.tfvars already exists: $TFVARS"
+  echo "terraform.tfvars (or tofu.tfvars) already exists: $TFVARS"
 fi
 echo ""
 
@@ -70,4 +70,4 @@ echo "  1. Edit infra/terraform.tfvars with your values"
 echo "  2. tofu plan (or terraform plan)"
 echo "  3. tofu apply (or terraform apply)"
 echo ""
-echo "Note: For OCI-to-AWS sync with rclone (VM polling), use ../oci-rclone-sync"
+echo "Note: This project uses VM + Rclone to sync OCI Usage Reports to AWS S3."

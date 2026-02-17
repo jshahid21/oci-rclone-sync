@@ -1,0 +1,67 @@
+#cloud-config
+# OCI-to-AWS Sync - Cloud-Init
+# Installs rclone, configures rclone.conf, creates sync.sh, cron every 6 hours
+
+package_update: true
+package_upgrade: true
+
+packages:
+  - unzip
+  - jq
+  - python3-pip
+
+runcmd:
+  - |
+    set -e
+    echo "=== OCI-to-AWS Sync Setup ==="
+
+    # 1. Install OCI CLI (Instance Principal)
+    if ! command -v oci &>/dev/null; then
+      pip3 install --break-system-packages oci-cli 2>/dev/null || pip3 install oci-cli 2>/dev/null || true
+    fi
+
+    # 2. Install rclone (A1=ARM: arm64, else amd64)
+    if ! command -v rclone &>/dev/null; then
+      ARCH=$(uname -m)
+      if [[ "$ARCH" == "aarch64" ]]; then RCLONE_ARCH=arm64; else RCLONE_ARCH=amd64; fi
+      curl -sLO "https://downloads.rclone.org/rclone-current-linux-${RCLONE_ARCH}.zip"
+      unzip -o rclone-current-linux-${RCLONE_ARCH}.zip
+      cp rclone-*-linux-${RCLONE_ARCH}/rclone /usr/local/bin/
+      chmod 755 /usr/local/bin/rclone
+    fi
+    rclone version
+
+    # 3. Create rclone.conf (OCI: instance_principal_auth, namespace=bling; AWS: env_auth)
+    mkdir -p /root/.config/rclone
+    cat > /root/.config/rclone/rclone.conf << 'RCLONE_EOF'
+    [oci_usage]
+    type = oracleobjectstorage
+    namespace = bling
+    region = us-ashburn-1
+    provider = instance_principal_auth
+
+    [aws_s3]
+    type = s3
+    provider = AWS
+    region = ${aws_region}
+    env_auth = true
+    RCLONE_EOF
+
+    chmod 600 /root/.config/rclone/rclone.conf
+
+    # 4. Create sync.sh - retrieves AWS keys from OCI Vault, runs rclone sync
+    cat > /usr/local/bin/sync.sh << 'SYNC_EOF'
+    #!/bin/bash
+    set -e
+    export AWS_ACCESS_KEY_ID=$(oci secrets secret-bundle get --secret-id ${aws_access_key_secret_id} --query 'data.secret-bundle-content.content' --raw-output 2>/dev/null | base64 -d)
+    export AWS_SECRET_ACCESS_KEY=$(oci secrets secret-bundle get --secret-id ${aws_secret_key_secret_id} --query 'data.secret-bundle-content.content' --raw-output 2>/dev/null | base64 -d)
+    rclone sync oci_usage:${source_bucket_name} aws_s3:${aws_s3_bucket_name}/${aws_s3_prefix} --log-file=/var/log/rclone-sync.log -v
+    SYNC_EOF
+
+    chmod 755 /usr/local/bin/sync.sh
+
+    # 5. Cron - every 6 hours
+    echo "0 */6 * * * root /usr/local/bin/sync.sh >> /var/log/rclone-sync.log 2>&1" >> /etc/crontab
+
+    # 6. First sync
+    /usr/local/bin/sync.sh || echo "First sync completed or failed - check /var/log/rclone-sync.log"

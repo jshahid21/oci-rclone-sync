@@ -1,10 +1,6 @@
 # =============================================================================
-# OCI-to-AWS Sync - Shared Infrastructure (Deprecated)
-# Copy to terraform.tfvars and customize
-#
-# NOTE: This project is deprecated. For OCI Usage Reports → AWS S3 sync,
-# use the oci-rclone-sync project instead. This tfvars is for tear-down only
-# or if you need to provision shared infra for other purposes.
+# OCI-to-AWS Sync - VM + Rclone Architecture
+# Copy to terraform.tfvars (or tofu.tfvars) and customize
 # =============================================================================
 
 region       = "us-ashburn-1"
@@ -40,14 +36,19 @@ existing_key_id  = ""
 # -----------------------------------------------------------------------------
 # AWS Credentials (stored in OCI Vault)
 # -----------------------------------------------------------------------------
-create_aws_secrets                = true
-existing_aws_access_key_secret_id = ""
-existing_aws_secret_key_secret_id = ""
-# aws_access_key = "AKIA..."      # Uncomment when create_aws_secrets = true
-# aws_secret_key = "your-secret"  # Uncomment when create_aws_secrets = true
+create_aws_secrets                 = true
+existing_aws_access_key_secret_id  = ""
+existing_aws_secret_key_secret_id  = ""
+# aws_access_key = "AKIA..."       # Uncomment when create_aws_secrets = true
+# aws_secret_key = "your-secret"   # Uncomment when create_aws_secrets = true
 
 # -----------------------------------------------------------------------------
-# AWS Destination (for secret naming; no direct consumer in this project)
+# OCI Source - Usage Report bucket (cross-tenancy, namespace=bling)
+# -----------------------------------------------------------------------------
+source_bucket_name = "your-oci-usage-report-bucket"
+
+# -----------------------------------------------------------------------------
+# AWS Destination
 # -----------------------------------------------------------------------------
 aws_s3_bucket_name = "my-aws-cost-reports"
 aws_s3_prefix      = "oci-sync"

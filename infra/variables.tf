@@ -189,6 +189,41 @@ variable "aws_secret_key" {
 }
 
 # -----------------------------------------------------------------------------
+# OCI Source (Usage Report bucket in cross-tenancy)
+# -----------------------------------------------------------------------------
+variable "source_bucket_name" {
+  description = "OCI Usage Report bucket name (in cross-tenancy, namespace=bling)"
+  type        = string
+}
+
+# -----------------------------------------------------------------------------
+# Compute (Always Free Ampere A1)
+# -----------------------------------------------------------------------------
+variable "instance_shape" {
+  description = "Compute shape (Always Free: VM.Standard.A1.Flex)"
+  type        = string
+  default     = "VM.Standard.A1.Flex"
+}
+
+variable "instance_ocpus" {
+  description = "OCPUs for A1.Flex"
+  type        = number
+  default     = 1
+}
+
+variable "instance_memory_gb" {
+  description = "Memory in GB for A1.Flex"
+  type        = number
+  default     = 1
+}
+
+variable "instance_display_name" {
+  description = "Display name for the compute instance"
+  type        = string
+  default     = "oci-aws-rclone-sync"
+}
+
+# -----------------------------------------------------------------------------
 # AWS Destination
 # -----------------------------------------------------------------------------
 variable "aws_s3_bucket_name" {

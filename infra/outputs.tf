@@ -3,6 +3,21 @@
 # Final resolved IDs for reference and downstream use
 # =============================================================================
 
+output "instance_id" {
+  description = "Compute instance OCID"
+  value       = oci_core_instance.rclone_sync.id
+}
+
+output "instance_private_ip" {
+  description = "Private IP of the sync VM"
+  value       = oci_core_instance.rclone_sync.private_ip
+}
+
+output "dynamic_group_name" {
+  description = "Dynamic Group name for Instance Principals"
+  value       = oci_identity_dynamic_group.rclone_dg.name
+}
+
 output "compartment_id" {
   description = "Compartment OCID in use"
   value       = local.compartment_id

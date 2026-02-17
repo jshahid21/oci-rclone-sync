@@ -1,7 +1,7 @@
 # =============================================================================
-# OCI-to-AWS Sync - Shared Infrastructure (Deprecated)
-# Hybrid Create vs Use Existing pattern
-# For OCI Usage Reports → AWS S3, use oci-rclone-sync project
+# OCI-to-AWS Sync - VM + Rclone Architecture
+# Hybrid: Create VCN/Subnet/NAT/Vault/Secrets OR use existing IDs
+# Compute: Always Free Ampere A1, cloud-init, cron every 6 hours
 # =============================================================================
 
 # -----------------------------------------------------------------------------
@@ -230,5 +230,60 @@ resource "oci_vault_secret" "aws_secret_key" {
     content_type = "BASE64"
     content      = base64encode(var.aws_secret_key)
   }
+}
+
+# -----------------------------------------------------------------------------
+# Compute Instance (Always Free Ampere A1)
+# -----------------------------------------------------------------------------
+resource "oci_core_instance" "rclone_sync" {
+  compartment_id      = local.compartment_id
+  availability_domain  = data.oci_identity_availability_domains.ads.availability_domains[0].name
+  shape               = var.instance_shape
+  display_name        = var.instance_display_name
+  subnet_id           = local.subnet_id
+  hostname_label      = "rclone-sync"
+  preserve_boot_volume = false
+
+  shape_config {
+    ocpus         = var.instance_ocpus
+    memory_in_gbs = var.instance_memory_gb
+  }
+
+  source_details {
+    source_type = "image"
+    source_id   = data.oci_core_images.oracle_linux.images[0].id
+  }
+
+  create_vnic_details {
+    subnet_id              = local.subnet_id
+    skip_source_dest_check = false
+    assign_public_ip       = false
+    nsg_ids                = []
+    hostname_label         = "rclone-sync"
+  }
+
+  metadata = {
+    user_data = base64encode(templatefile("${path.module}/cloud-init.yaml", {
+      aws_access_key_secret_id  = local.aws_access_key_secret_id
+      aws_secret_key_secret_id  = local.aws_secret_key_secret_id
+      source_bucket_name        = var.source_bucket_name
+      aws_s3_bucket_name        = var.aws_s3_bucket_name
+      aws_s3_prefix             = var.aws_s3_prefix
+      aws_region                = var.aws_region
+    }))
+  }
+}
+
+data "oci_identity_availability_domains" "ads" {
+  compartment_id = local.compartment_id
+}
+
+data "oci_core_images" "oracle_linux" {
+  compartment_id           = local.compartment_id
+  operating_system         = "Oracle Linux"
+  operating_system_version = "9"
+  shape                    = var.instance_shape
+  sort_by                  = "TIMECREATED"
+  sort_order               = "DESC"
 }
 
