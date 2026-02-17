@@ -1,0 +1,295 @@
+# =============================================================================
+# OCI AWS Firehose - Hybrid Create vs Use Existing Variables
+# =============================================================================
+
+variable "region" {
+  description = "OCI region (e.g., us-ashburn-1)"
+  type        = string
+}
+
+variable "tenancy_ocid" {
+  description = "OCI Tenancy OCID"
+  type        = string
+}
+
+# -----------------------------------------------------------------------------
+# Compartment
+# -----------------------------------------------------------------------------
+variable "create_compartment" {
+  description = "Create a new compartment for Firehose resources"
+  type        = bool
+  default     = false
+}
+
+variable "existing_compartment_id" {
+  description = "Existing compartment OCID when create_compartment is false"
+  type        = string
+  default     = ""
+}
+
+variable "compartment_name" {
+  description = "Name for the compartment when create_compartment is true"
+  type        = string
+  default     = "firehose-compartment"
+}
+
+variable "compartment_description" {
+  description = "Description for the compartment"
+  type        = string
+  default     = "Compartment for OCI-to-AWS Firehose pipeline"
+}
+
+# -----------------------------------------------------------------------------
+# VCN & Networking
+# -----------------------------------------------------------------------------
+variable "create_vcn" {
+  description = "Create a new VCN"
+  type        = bool
+  default     = false
+}
+
+variable "existing_vcn_id" {
+  description = "Existing VCN OCID when create_vcn is false"
+  type        = string
+  default     = ""
+}
+
+variable "vcn_cidr" {
+  description = "CIDR block for VCN when creating new"
+  type        = string
+  default     = "10.0.0.0/16"
+}
+
+variable "vcn_dns_label" {
+  description = "DNS label for VCN"
+  type        = string
+  default     = "firehosevcn"
+}
+
+variable "create_subnet" {
+  description = "Create a new private subnet"
+  type        = bool
+  default     = false
+}
+
+variable "existing_subnet_id" {
+  description = "Existing subnet OCID when create_subnet is false"
+  type        = string
+  default     = ""
+}
+
+variable "subnet_cidr" {
+  description = "CIDR for private subnet when creating new"
+  type        = string
+  default     = "10.0.1.0/24"
+}
+
+variable "subnet_dns_label" {
+  description = "DNS label for subnet"
+  type        = string
+  default     = "firehosesubnet"
+}
+
+# -----------------------------------------------------------------------------
+# NAT Gateway
+# -----------------------------------------------------------------------------
+variable "create_nat_gateway" {
+  description = "Create a new NAT Gateway (for AWS/internet egress)"
+  type        = bool
+  default     = false
+}
+
+variable "existing_nat_gateway_id" {
+  description = "Existing NAT Gateway OCID when create_nat_gateway is false"
+  type        = string
+  default     = ""
+}
+
+# -----------------------------------------------------------------------------
+# Service Gateway
+# -----------------------------------------------------------------------------
+variable "create_service_gateway" {
+  description = "Create a new Service Gateway (for OCI Object Storage)"
+  type        = bool
+  default     = false
+}
+
+variable "existing_service_gateway_id" {
+  description = "Existing Service Gateway OCID when create_service_gateway is false"
+  type        = string
+  default     = ""
+}
+
+# -----------------------------------------------------------------------------
+# Vault & Keys
+# -----------------------------------------------------------------------------
+variable "create_vault" {
+  description = "Create a new Vault for storing AWS credentials"
+  type        = bool
+  default     = false
+}
+
+variable "existing_vault_id" {
+  description = "Existing Vault OCID when create_vault is false"
+  type        = string
+  default     = ""
+}
+
+variable "create_key" {
+  description = "Create a new KMS key for secret encryption"
+  type        = bool
+  default     = false
+}
+
+variable "existing_key_id" {
+  description = "Existing KMS Key OCID when create_key is false"
+  type        = string
+  default     = ""
+}
+
+variable "vault_type" {
+  description = "Vault type: DEFAULT or VIRTUAL_PRIVATE"
+  type        = string
+  default     = "DEFAULT"
+}
+
+# -----------------------------------------------------------------------------
+# Secrets (AWS Credentials)
+# -----------------------------------------------------------------------------
+variable "create_aws_secrets" {
+  description = "Create AWS Access Key and Secret Key secrets in Vault"
+  type        = bool
+  default     = false
+}
+
+variable "existing_aws_access_key_secret_id" {
+  description = "Existing secret OCID for AWS Access Key when create_aws_secrets is false"
+  type        = string
+  default     = ""
+}
+
+variable "existing_aws_secret_key_secret_id" {
+  description = "Existing secret OCID for AWS Secret Key when create_aws_secrets is false"
+  type        = string
+  default     = ""
+}
+
+variable "aws_access_key" {
+  description = "AWS Access Key ID (used when create_aws_secrets is true)"
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "aws_secret_key" {
+  description = "AWS Secret Access Key (used when create_aws_secrets is true)"
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+# -----------------------------------------------------------------------------
+# Object Storage Bucket
+# -----------------------------------------------------------------------------
+variable "create_bucket" {
+  description = "Create the OCI source bucket (oci-cost-reports)"
+  type        = bool
+  default     = false
+}
+
+variable "existing_bucket_namespace" {
+  description = "Namespace of existing bucket when create_bucket is false"
+  type        = string
+  default     = ""
+}
+
+variable "source_bucket_name" {
+  description = "OCI Object Storage bucket name"
+  type        = string
+  default     = "oci-cost-reports"
+}
+
+# -----------------------------------------------------------------------------
+# Function Application
+# -----------------------------------------------------------------------------
+variable "create_function_app" {
+  description = "Create a new OCI Functions application"
+  type        = bool
+  default     = true
+}
+
+variable "existing_function_app_id" {
+  description = "Existing Functions application OCID when create_function_app is false"
+  type        = string
+  default     = ""
+}
+
+variable "existing_function_id" {
+  description = "Existing function OCID when create_function_app is false (for Events rule)"
+  type        = string
+  default     = ""
+}
+
+variable "function_image" {
+  description = "OCIR image URI for the function (e.g., from 'fn deploy'). Used when create_function_app is true."
+  type        = string
+  default     = ""
+}
+
+variable "function_app_display_name" {
+  description = "Display name for the Functions application"
+  type        = string
+  default     = "oci-aws-firehose"
+}
+
+variable "function_display_name" {
+  description = "Display name for the function"
+  type        = string
+  default     = "firehose-handler"
+}
+
+variable "function_timeout_seconds" {
+  description = "Function timeout in seconds"
+  type        = number
+  default     = 120
+}
+
+variable "function_memory_mb" {
+  description = "Function memory in MB"
+  type        = number
+  default     = 256
+}
+
+# -----------------------------------------------------------------------------
+# Events
+# -----------------------------------------------------------------------------
+variable "create_event_rule" {
+  description = "Create OCI Events rule to trigger on Object Create"
+  type        = bool
+  default     = true
+}
+
+variable "event_rule_display_name" {
+  description = "Display name for the Events rule"
+  type        = string
+  default     = "firehose-object-create"
+}
+
+# -----------------------------------------------------------------------------
+# AWS Destination
+# -----------------------------------------------------------------------------
+variable "aws_s3_bucket_name" {
+  description = "AWS S3 bucket name for destination"
+  type        = string
+}
+
+variable "aws_s3_prefix" {
+  description = "Optional prefix/folder in S3 bucket"
+  type        = string
+  default     = ""
+}
+
+variable "aws_region" {
+  description = "AWS region for S3 bucket"
+  type        = string
+}

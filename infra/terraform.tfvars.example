@@ -1,0 +1,72 @@
+# =============================================================================
+# OCI AWS Firehose - terraform.tfvars.example
+# Copy to terraform.tfvars and customize
+# =============================================================================
+
+region        = "us-ashburn-1"
+tenancy_ocid  = "ocid1.tenancy.oc1..aaaaaaaa..."
+
+# -----------------------------------------------------------------------------
+# Greenfield: Create new compartment
+# -----------------------------------------------------------------------------
+create_compartment     = true
+existing_compartment_id = ""
+compartment_name      = "firehose-compartment"
+
+# -----------------------------------------------------------------------------
+# Greenfield: Create new network (VCN, subnet, NAT, Service Gateway)
+# Brownfield: Set create_* = false and provide existing_*_id
+# -----------------------------------------------------------------------------
+create_vcn               = true
+existing_vcn_id          = ""
+create_subnet            = true
+existing_subnet_id       = ""
+create_nat_gateway       = true
+existing_nat_gateway_id  = ""
+create_service_gateway   = true
+existing_service_gateway_id = ""
+
+# -----------------------------------------------------------------------------
+# Vault: Create new or use existing
+# -----------------------------------------------------------------------------
+create_vault   = true
+existing_vault_id = ""
+create_key     = true
+existing_key_id = ""
+
+# -----------------------------------------------------------------------------
+# AWS Credentials: Create secrets in Vault or use existing secret OCIDs
+# When create_aws_secrets = true, set aws_access_key and aws_secret_key
+# -----------------------------------------------------------------------------
+create_aws_secrets            = true
+existing_aws_access_key_secret_id = ""
+existing_aws_secret_key_secret_id = ""
+# aws_access_key = "AKIA..."      # Uncomment and set when create_aws_secrets = true
+# aws_secret_key = "your-secret"  # Uncomment and set when create_aws_secrets = true
+
+# -----------------------------------------------------------------------------
+# Source bucket: Create or use existing (oci-cost-reports)
+# -----------------------------------------------------------------------------
+create_bucket            = false
+existing_bucket_namespace = "your-tenancy-namespace"  # From: oci os ns get
+source_bucket_name       = "oci-cost-reports"
+
+# -----------------------------------------------------------------------------
+# Function: Create new or use existing app/function
+# -----------------------------------------------------------------------------
+create_function_app     = true
+existing_function_app_id = ""
+existing_function_id    = ""
+function_image          = ""  # Optional: set after fn deploy
+
+# -----------------------------------------------------------------------------
+# Events
+# -----------------------------------------------------------------------------
+create_event_rule = true
+
+# -----------------------------------------------------------------------------
+# AWS Destination
+# -----------------------------------------------------------------------------
+aws_s3_bucket_name = "my-aws-cost-reports"
+aws_s3_prefix      = "oci-sync"
+aws_region         = "us-east-1"
