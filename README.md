@@ -61,7 +61,7 @@ Edit `terraform.tfvars`:
 | `aws_s3_bucket_name`, `aws_s3_prefix`, `aws_region` | ✓ |
 | `aws_access_key`, `aws_secret_key` (if `create_aws_secrets = true`) | ✓ |
 | `alert_email_address` | ✓ |
-| `oci_rclone_user_email` | ✓ (e.g. `rclone-sync@service.local` or your-domain email) |
+| `oci_rclone_user_email` | ✓ (RFC 5322 format, e.g. `rclone-sync@example.com` or your-domain) |
 | `oci_api_key_fingerprint`, `oci_api_private_key` | After step 3 |
 
 ### 2. First deploy

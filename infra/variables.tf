@@ -291,9 +291,9 @@ variable "oci_rclone_group_name" {
 }
 
 variable "oci_rclone_user_email" {
-  description = "Email for rclone-sync IAM user (required by OCI identity domain)"
+  description = "Email for rclone-sync IAM user (required by OCI, RFC 5322 format)"
   type        = string
-  default     = "rclone-sync@service.local"
+  default     = "rclone-sync@example.com"
 }
 
 variable "create_oci_private_key_secret" {

@@ -53,7 +53,7 @@ aws_secret_key = "your-secret-here"
 # -----------------------------------------------------------------------------
 # OCI API Key (rclone uses API key; instance principal does not work for bling)
 # -----------------------------------------------------------------------------
-oci_rclone_user_email = "rclone-sync@service.local"  # or your-domain email if identity domain requires it
+oci_rclone_user_email = "rclone-sync@example.com"  # RFC 5322 format; override with your domain if needed
 create_oci_private_key_secret  = true
 existing_oci_private_key_secret_id = ""
 # Two-step: (1) Apply to create user, add API key in Console to that user
