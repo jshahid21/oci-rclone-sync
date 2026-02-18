@@ -17,6 +17,7 @@ resource "oci_identity_user" "rclone_user" {
   compartment_id = var.tenancy_ocid
   name           = var.oci_rclone_user_name
   description    = "OCI user for rclone sync (API key auth)"
+  email          = var.oci_rclone_user_email
 }
 
 resource "oci_identity_user_group_membership" "rclone_user_in_group" {
@@ -30,11 +31,10 @@ resource "oci_identity_policy" "rclone_policy" {
   name           = "rclone-cross-tenancy-policy"
   description    = "Vault secret read (dynamic group) + Cost report read (rclone group)"
   statements = [
-    # Instance principal: read Vault secrets (AWS keys, OCI API key)
-    "Allow dynamic-group rclone-dg to read secret-bundles in compartment id ${local.compartment_id}",
-    # API key user: read cost reports from Oracle bling namespace (Define/Endorse)
+    # Define must be first (OCI policy rule)
     "Define tenancy reporting as ocid1.tenancy.oc1..aaaaaaaaned4fkpkisbwjlr56u7cj63lf3wffbilvqknstgtvzub7vhqkggq",
     "Endorse group ${var.oci_rclone_group_name} to read objects in tenancy reporting",
-    "Endorse group ${var.oci_rclone_group_name} to read buckets in tenancy reporting"
+    "Endorse group ${var.oci_rclone_group_name} to read buckets in tenancy reporting",
+    "Allow dynamic-group rclone-dg to read secret-bundles in compartment id ${local.compartment_id}"
   ]
 }

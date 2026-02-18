@@ -61,6 +61,7 @@ Edit `terraform.tfvars`:
 | `aws_s3_bucket_name`, `aws_s3_prefix`, `aws_region` | ✓ |
 | `aws_access_key`, `aws_secret_key` (if `create_aws_secrets = true`) | ✓ |
 | `alert_email_address` | ✓ |
+| `oci_rclone_user_email` | ✓ (e.g. `rclone-sync@service.local` or your-domain email) |
 | `oci_api_key_fingerprint`, `oci_api_private_key` | After step 3 |
 
 ### 2. First deploy
@@ -147,6 +148,7 @@ Set `create_bastion = false` in tfvars if you do not need bastion access. Bastio
 | "directory not found" (bling) | Cost reports are in tenancy **home region** — ensure `region` in tfvars matches. Reports may take 24–48h to appear. Verify policy in IAM. |
 | No email alerts | Confirm OCI Subscription in your inbox; verify `alert_email_address` in tfvars |
 | OCI permission denied | Ensure `rclone-cross-tenancy-policy` has Define + Endorse for rclone-sync-readers group; verify OCI API key in Vault |
+| "primary email must be specified" | Set `oci_rclone_user_email` in tfvars (e.g. valid email for your identity domain) |
 | AWS permission denied | Verify IAM has `s3:PutObject` on bucket |
 | Image lookup empty | Try `instance_shape = "VM.Standard.E5.Flex"` (better availability in some regions) |
 | TLS error (macOS) | `export SSL_CERT_FILE=$(brew --prefix)/etc/ca-certificates/cert.pem` |

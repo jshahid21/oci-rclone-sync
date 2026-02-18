@@ -290,6 +290,12 @@ variable "oci_rclone_group_name" {
   default     = "rclone-sync-readers"
 }
 
+variable "oci_rclone_user_email" {
+  description = "Email for rclone-sync IAM user (required by OCI identity domain)"
+  type        = string
+  default     = "rclone-sync@service.local"
+}
+
 variable "create_oci_private_key_secret" {
   description = "Create Vault secret for OCI API private key"
   type        = bool

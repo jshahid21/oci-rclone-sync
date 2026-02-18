@@ -355,7 +355,8 @@ resource "oci_vault_secret" "oci_api_private_key" {
   key_id         = local.key_id
   secret_content {
     content_type = "BASE64"
-    content      = base64encode(var.oci_api_private_key)
+    # OCI requires non-empty content; use placeholder until real key is set
+    content = base64encode(coalesce(var.oci_api_private_key, "placeholder-replace-after-adding-api-key"))
   }
 }
 
