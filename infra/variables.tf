@@ -223,9 +223,9 @@ variable "instance_ocpus" {
 }
 
 variable "instance_memory_gb" {
-  description = "Memory in GB for Flex shapes (E5: up to 16/OCPU; E6: up to 64/OCPU)"
+  description = "Memory in GB for Flex shapes (E5: up to 16/OCPU; E6: up to 64/OCPU). Use at least 2 for bootstrap (dnf + pip)."
   type        = number
-  default     = 1
+  default     = 2
 }
 
 variable "instance_display_name" {

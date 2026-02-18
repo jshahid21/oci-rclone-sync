@@ -71,5 +71,23 @@ write_files:
       /usr/local/bin/sync.sh || echo "First sync failed - check /var/log/rclone-sync.log"
       echo "=== Bootstrap finished at $(date) ==="
 
+  - path: /etc/systemd/system/oci-sync-bootstrap.service
+    owner: root:root
+    permissions: "0644"
+    content: |
+      [Unit]
+      Description=OCI Sync Bootstrap (delayed - avoids OOM during boot)
+      After=network-online.target
+
+      [Service]
+      Type=oneshot
+      ExecStartPre=/bin/sleep 90
+      ExecStart=/root/bootstrap-oci-sync.sh
+      RemainAfterExit=yes
+
+      [Install]
+      WantedBy=multi-user.target
+
 runcmd:
-  - ( nohup /root/bootstrap-oci-sync.sh & )
+  - systemctl enable oci-sync-bootstrap.service
+  - systemctl start oci-sync-bootstrap.service

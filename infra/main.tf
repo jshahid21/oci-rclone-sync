@@ -239,7 +239,6 @@ resource "oci_core_instance" "bastion" {
   availability_domain  = local.availability_domain
   shape               = var.instance_shape
   display_name        = "oci-aws-sync-bastion"
-  subnet_id           = oci_core_subnet.bastion[0].id
   preserve_boot_volume = false
 
   shape_config {
@@ -354,7 +353,6 @@ resource "oci_core_instance" "rclone_sync" {
   availability_domain  = local.availability_domain
   shape               = var.instance_shape
   display_name        = var.instance_display_name
-  subnet_id           = local.subnet_id
   preserve_boot_volume = false
 
   freeform_tags = {
