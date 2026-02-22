@@ -2,6 +2,7 @@
 # OCI-to-AWS Sync - Cloud-Init
 # OCI kills cloud-init after ~2min; package install + runcmd exceed that.
 # All setup runs in a background script so cloud-init completes immediately.
+# Architecture: 100% Instance Principal (OCI) + Vault (AWS keys at runtime)
 
 # Security: disable root login, no password auth
 ssh_pwauth: false
@@ -18,9 +19,7 @@ write_files:
     content: |
       [oci_usage]
       type = oracleobjectstorage
-      provider = user_principal_auth
-      config_file = /root/.oci/config
-      config_profile = rclone
+      provider = instance_principal_auth
       namespace = bling
       compartment = ${tenancy_ocid}
       region = ${region}
@@ -43,33 +42,9 @@ write_files:
 
       OCI_BIN="$(command -v oci 2>/dev/null)"
       [[ -z "$${OCI_BIN}" ]] && OCI_BIN="/usr/local/bin/oci"
-%{ if aws_credentials_injected ~}
-      export AWS_ACCESS_KEY_ID=$(echo '${aws_access_key_b64}' | base64 -d)
-      export AWS_SECRET_ACCESS_KEY=$(echo '${aws_secret_key_b64}' | base64 -d)
-%{ else ~}
-      export AWS_ACCESS_KEY_ID=$($${OCI_BIN} --auth instance_principal secrets secret-bundle get --secret-id ${aws_access_key_secret_id} --query 'data.secret-bundle-content.content' --raw-output 2>/dev/null | base64 -d)
-      export AWS_SECRET_ACCESS_KEY=$($${OCI_BIN} --auth instance_principal secrets secret-bundle get --secret-id ${aws_secret_key_secret_id} --query 'data.secret-bundle-content.content' --raw-output 2>/dev/null | base64 -d)
-%{ endif ~}
 
-      # OCI API key: injected via cloud-init (when enabled) or fetched from Vault
-      mkdir -p /root/.oci
-%{ if oci_private_key_injected ~}
-      echo '${oci_private_key_b64}' | base64 -d > /root/.oci/key.pem
-%{ else ~}
-      ERR_LOG="/var/log/rclone-sync-errors.log"
-      $${OCI_BIN} --auth instance_principal secrets secret-bundle get --secret-id ${oci_private_key_secret_id} --query 'data.secret-bundle-content.content' --raw-output 2>>"$${ERR_LOG}" | base64 -d > /root/.oci/key.pem
-      if ! grep -q "BEGIN PRIVATE KEY" /root/.oci/key.pem 2>/dev/null; then
-        echo "ERROR: Vault fetch failed - key.pem empty or invalid (check $${ERR_LOG}). Instance principal needs 'read secret-bundles'." >> /var/log/rclone-sync.log
-        if [ -n "${alert_topic_id}" ]; then
-          $${OCI_BIN} ons message publish --topic-id "${alert_topic_id}" --body "Rclone: Vault secret fetch failed. Check /var/log/rclone-sync-errors.log and key.pem" 2>/dev/null || true
-        fi
-        exit 1
-      fi
-%{ endif ~}
-      chmod 600 /root/.oci/key.pem
-      printf '[rclone]\nuser = %s\nfingerprint = %s\ntenancy = %s\nregion = %s\nkey_file = /root/.oci/key.pem\n' \
-        '${oci_user_ocid}' '${oci_api_key_fingerprint}' '${tenancy_ocid}' '${region}' > /root/.oci/config
-      chmod 600 /root/.oci/config
+      export AWS_ACCESS_KEY_ID=$($${OCI_BIN} secrets secret-bundle get --secret-id ${aws_access_key_secret_id} --auth instance_principal --query 'data."secret-bundle-content".content' --raw-output | base64 --decode)
+      export AWS_SECRET_ACCESS_KEY=$($${OCI_BIN} secrets secret-bundle get --secret-id ${aws_secret_key_secret_id} --auth instance_principal --query 'data."secret-bundle-content".content' --raw-output | base64 --decode)
 
       if ! /usr/local/bin/rclone sync oci_usage:${tenancy_ocid} aws_s3:${aws_s3_bucket_name}/${aws_s3_prefix} --log-file=/var/log/rclone-sync.log --checksum --s3-chunk-size 64M --s3-upload-concurrency 8 -v; then
         if [ -n "${alert_topic_id}" ]; then

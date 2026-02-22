@@ -1,41 +1,22 @@
-# Dynamic Group (Vault secret read only - instance principal for fetching creds at runtime)
+# Dynamic Group (Instance Principal for OCI auth + Vault secret read for AWS keys at runtime)
 resource "oci_identity_dynamic_group" "rclone_dg" {
   compartment_id = var.tenancy_ocid
   name          = "rclone-dg"
-  description   = "Dynamic group for OCI-to-AWS rclone sync VM (Vault secret read)"
+  description   = "Dynamic group for OCI-to-AWS rclone sync VM (Instance Principal + Vault)"
   matching_rule = "ALL {tag.Role.value = 'rclone-worker', instance.compartment.id = '${local.compartment_id}'}"
 }
 
-# IAM User + Group for API key auth (bling cost reports - instance principal does not work for bling)
-resource "oci_identity_group" "rclone_group" {
-  compartment_id = var.tenancy_ocid
-  name           = var.oci_rclone_group_name
-  description    = "Group for rclone sync user (API key auth for cost reports)"
-}
-
-resource "oci_identity_user" "rclone_user" {
-  compartment_id = var.tenancy_ocid
-  name           = var.oci_rclone_user_name
-  description    = "OCI user for rclone sync (API key auth)"
-  email          = var.oci_rclone_user_email
-}
-
-resource "oci_identity_user_group_membership" "rclone_user_in_group" {
-  user_id  = oci_identity_user.rclone_user.id
-  group_id = oci_identity_group.rclone_group.id
-}
-
-# Policy: Vault secret read (instance principal) + Cost report read (group / API key)
+# A-Team policy: Instance Principal access to restricted billing (usage-report) namespace
+# + Vault secret-bundles for AWS credentials (fixes 404 - must be secret-bundles, not secrets)
 resource "oci_identity_policy" "rclone_policy" {
   compartment_id = var.tenancy_ocid
   name           = "rclone-cross-tenancy-policy"
-  description    = "Vault secret read (dynamic group) + Cost report read (rclone group)"
+  description    = "Instance Principal: usage-report (bling) + Vault secret-bundles"
   statements = [
-    # Define must be first (OCI policy rule)
-    "Define tenancy reporting as ocid1.tenancy.oc1..aaaaaaaaned4fkpkisbwjlr56u7cj63lf3wffbilvqknstgtvzub7vhqkggq",
-    "Endorse group ${var.oci_rclone_group_name} to read objects in tenancy reporting",
-    "Endorse group ${var.oci_rclone_group_name} to read buckets in tenancy reporting",
-    # Vault secret read: instance principal fetches secrets at runtime (use > read for GetSecretBundle)
-    "Allow dynamic-group rclone-dg to use secret-bundles in compartment id ${local.compartment_id}"
+    # Define must be first (OCI policy rule) - A-Team pattern for billing bucket
+    "Define tenancy usage-report as ocid1.tenancy.oc1..aaaaaaaaned4fkpkisbwjlr56u7cj63lf3wffbilvqknstgtvzub7vhqkggq",
+    "Endorse dynamic-group ${oci_identity_dynamic_group.rclone_dg.name} to read objects in tenancy usage-report",
+    # Vault: read secret-bundles (not secrets) - required for GetSecretBundle API
+    "Allow dynamic-group ${oci_identity_dynamic_group.rclone_dg.name} to read secret-bundles in compartment id ${local.compartment_id}"
   ]
 }

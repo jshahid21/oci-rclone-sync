@@ -50,16 +50,8 @@ existing_aws_secret_key_secret_id  = ""
 aws_access_key = "AKIA..."
 aws_secret_key = "your-secret-here"
 
-# -----------------------------------------------------------------------------
-# OCI API Key (required for bling cost reports)
-# -----------------------------------------------------------------------------
-oci_rclone_user_email = "rclone-sync@example.com"  # RFC 5322 format; override with your domain if needed
-create_oci_private_key_secret  = true
-existing_oci_private_key_secret_id = ""
-# Two-step: (1) Apply to create user, add API key in Console to that user
-#           (2) Add fingerprint + private key below, apply again. Sync will then work.
-oci_api_key_fingerprint = "aa:bb:cc:dd:..."
-oci_api_private_key     = "-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----"
+# Architecture: 100% Instance Principal for OCI (A-Team usage-report policy)
+# AWS keys are stored in Vault and fetched at runtime via instance principal
 
 # -----------------------------------------------------------------------------
 # Optional: opc_password = "..." for Serial Console login

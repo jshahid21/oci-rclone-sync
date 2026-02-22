@@ -11,15 +11,15 @@ OCI bling (cost reports)  →  VM (rclone + cron)  →  AWS S3
 ```
 
 - VM in private subnet, egress via NAT + Service Gateway
-- Rclone uses OCI API key for bling (instance principal does not work for cost reports)
-- AWS credentials for S3 write
+- **100% Instance Principal:** OCI auth via dynamic group (A-Team usage-report policy for bling); no API keys
+- **AWS credentials:** Stored in OCI Vault, fetched at runtime via instance principal
 - Sync every 6h; optional email alerts on failure
 
 ## Prerequisites
 
 - **OpenTofu:** `brew install opentofu`
-- **OCI:** `~/.oci/config` with DEFAULT profile
-- **AWS:** IAM user with S3 access; keys in tfvars
+- **OCI:** `~/.oci/config` with DEFAULT profile (for Terraform apply only)
+- **AWS:** IAM user with S3 access; keys stored in OCI Vault
 - **Email:** For sync-failure alerts (optional)
 
 ## Quick Start
@@ -27,13 +27,13 @@ OCI bling (cost reports)  →  VM (rclone + cron)  →  AWS S3
 ```bash
 cd infra
 cp terraform.tfvars.example terraform.tfvars
-# Edit terraform.tfvars: region, tenancy_ocid, compartment, aws_*, oci_api_*, etc.
+# Edit terraform.tfvars: region, tenancy_ocid, compartment, aws_*, existing_*_secret_id (if brownfield)
 
 tofu init
 tofu apply
 ```
 
-**Two-step for OCI API key:** First apply creates the `rclone-sync` user. Add an API key in Console → Identity → Users → rclone-sync → API Keys, then set `oci_api_key_fingerprint` and `oci_api_private_key` in tfvars and apply again.
+**Single apply:** No API keys needed. The VM uses Instance Principal for OCI and fetches AWS keys from Vault at runtime.
 
 ## Security
 
@@ -41,15 +41,13 @@ tofu apply
 
 | Credential | Method | Where it lives |
 |------------|--------|----------------|
-| **OCI API private key** | Injected in cloud-init user_data (base64) | `terraform.tfvars` → Terraform state → instance metadata (`user_data`) → decoded at boot to `/root/.oci/key.pem` |
-| **AWS access key + secret** | Injected in cloud-init user_data (base64) | `terraform.tfvars` → Terraform state → instance metadata (`user_data`) → decoded at each sync run into env vars `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` |
+| **OCI auth** | Instance Principal (dynamic group) | No keys—VM identity grants access to bling namespace via A-Team cross-tenancy policy |
+| **AWS access key + secret** | OCI Vault, fetched at sync time | Stored in Vault; VM fetches via `oci secrets secret-bundle get --auth instance_principal` |
 
 **Implications:**
-- Credentials are embedded in instance metadata. Anyone with `compute instance read` + `instance console connection` or metadata access can read them.
-- Terraform state contains the values. Use a locked remote backend; avoid committing state.
-- `terraform.tfvars` is gitignored. Never commit it.
-
-**Vault alternative:** Set `inject_oci_private_key_via_cloud_init = false` and `inject_aws_credentials_via_cloud_init = false` to fetch credentials from OCI Vault at runtime via instance principal. Requires the dynamic group to have `read secret-bundles` on the compartment; in some tenancies this returns 404, so injection is the default.
+- No credentials in instance metadata or Terraform state
+- Terraform state does not contain AWS keys or OCI private keys
+- Vault stores AWS keys; dynamic group needs `read secret-bundles` on compartment
 
 ## Configuration
 
@@ -58,8 +56,8 @@ tofu apply
 | `region`, `tenancy_ocid`, `existing_compartment_id` | ✓ |
 | `aws_s3_bucket_name`, `aws_s3_prefix`, `aws_region` | ✓ |
 | `aws_access_key`, `aws_secret_key` | ✓ (when create_aws_secrets) |
-| `oci_api_key_fingerprint`, `oci_api_private_key` | ✓ (after adding API key to user) |
-| `oci_rclone_user_email`, `alert_email_address` | ✓ |
+| `existing_aws_access_key_secret_id`, `existing_aws_secret_key_secret_id` | ✓ (when create_aws_secrets = false) |
+| `alert_email_address` | Optional (for sync-failure email alerts) |
 
 ## AWS IAM Policy
 
@@ -93,7 +91,7 @@ Logs: `/var/log/rclone-sync.log`
 
 | Issue | Action |
 |-------|--------|
-| `key.pem empty` | Ensure `oci_api_private_key` in tfvars is the full PEM. Taint instance and re-apply. |
+| `403 Forbidden` (bling) | Ensure A-Team policy is applied: `Define tenancy usage-report` + `Endorse dynamic-group rclone-dg to read objects in tenancy usage-report` |
+| `404` (Vault secret fetch) | Policy must use `read secret-bundles` (not `secrets`). Check IAM policy on compartment. |
 | `403 Forbidden` (S3) | Add `s3:GetObject` to IAM policy (rclone uses it for HeadObject). |
-| `EC2 IMDS` error | AWS keys not set. Ensure `aws_access_key`/`aws_secret_key` in tfvars and inject is enabled. |
 | No bling data | Reports are in tenancy home region. Set `region` correctly; reports may take 24–48h. |
