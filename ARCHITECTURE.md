@@ -87,7 +87,7 @@ This document explains every component for someone maintaining this project. Sta
 | Resource | What it does |
 |----------|---------------|
 | **oci_identity_dynamic_group.rclone_dg** | Groups all instances in your compartment. The VM is a member by compartment match (`instance.compartment.id`). Freeform tags are not used. |
-| **oci_identity_policy.rclone_policy** | Single policy with: (1) Define usage-report tenancy (A-Team billing namespace), (2) Read objects + buckets in usage-report, (3) Use secret-bundles in compartment (Vault), (4) Use ons-topics (Notifications for alerts). |
+| **oci_identity_policy.rclone_policy** | Single policy with: (1) Define usage-report tenancy (FOCUS Report tenancy billing namespace), (2) Read objects + buckets in usage-report, (3) Use secret-bundles in compartment (Vault), (4) Use ons-topics (Notifications for alerts). |
 
 **Why no API keys?** Instance Principal: the VM uses its identity (metadata) to get temporary credentials. The dynamic group policies authorize that identity.
 
@@ -148,7 +148,7 @@ This document explains every component for someone maintaining this project. Sta
 ### Instance Principal
 The VM has no OCI config or API keys. It uses the OCI instance metadata service to get temporary credentials. The dynamic group says "instances in compartment X are allowed to ...". Policies grant that group access.
 
-### A-Team usage-report policy
+### FOCUS usage-report policy
 Bling (cost reports) lives in a restricted Oracle tenancy. The policy:
 - `Define tenancy usage-report as ocid1.tenancy.oc1..aaaa...` — names that tenancy
 - `Endorse dynamic-group rclone-dg to read objects/buckets in tenancy usage-report` — grants cross-tenancy access
