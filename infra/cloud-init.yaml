@@ -39,10 +39,10 @@ write_files:
       [[ -z "$${OCI_BIN}" ]] && OCI_BIN="/usr/local/bin/oci"
 
       alert_on_exit() {
-        code=$$?
-        if [ "$${code}" -ne 0 ] && [ -n "${alert_topic_id}" ]; then
+        err=$?
+        if [ "$${err}" != "0" ] && [ -n "${alert_topic_id}" ]; then
           $${OCI_BIN} ons message publish --topic-id "${alert_topic_id}" --auth instance_principal \
-            --body "Rclone sync FAILED (exit $$code). Check /var/log/rclone-sync.log on $(hostname)" 2>/dev/null || true
+            --body "Rclone sync FAILED (exit $${err}). Check /var/log/rclone-sync.log on $(hostname)" 2>/dev/null || true
         fi
       }
       trap alert_on_exit EXIT
@@ -66,10 +66,10 @@ write_files:
 
       OCI_BIN="$(command -v oci 2>/dev/null)"
       alert_on_bootstrap_fail() {
-        code=$$?
-        if [ "$${code}" -ne 0 ] && [ -n "${alert_topic_id}" ] && [ -n "$${OCI_BIN}" ]; then
+        err=$?
+        if [ "$${err}" != "0" ] && [ -n "${alert_topic_id}" ] && [ -n "$${OCI_BIN}" ]; then
           $${OCI_BIN} ons message publish --topic-id "${alert_topic_id}" --auth instance_principal \
-            --body "Bootstrap FAILED (exit $$code). Check /var/log/cloud-init-bootstrap.log on $(hostname)" 2>/dev/null || true
+            --body "Bootstrap FAILED (exit $${err}). Check /var/log/cloud-init-bootstrap.log on $(hostname)" 2>/dev/null || true
         fi
       }
       trap alert_on_bootstrap_fail EXIT

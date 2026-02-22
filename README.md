@@ -102,5 +102,7 @@ Your IAM user needs S3 access. Example policy (replace `YOUR_BUCKET`):
 ## Architecture Recap
 
 - **OCI**: Instance Principal (no API keys on VM). Dynamic group `rclone-dg` matches instances in your compartment. A-Team policy grants access to bling (usage-report) namespace.
+
+**Maintainers:** See [ARCHITECTURE.md](ARCHITECTURE.md) for a file-by-file breakdown of components and maintenance tasks.
 - **AWS**: Keys stored in OCI Vault, fetched at sync time. No credentials in Terraform state or instance metadata.
 - **Cron**: Every 6 hours (`0 */6 * * *`). Logs append to `/var/log/rclone-sync.log`.

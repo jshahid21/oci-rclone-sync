@@ -14,6 +14,7 @@ resource "oci_identity_policy" "rclone_policy" {
     "Define tenancy usage-report as ocid1.tenancy.oc1..aaaaaaaaned4fkpkisbwjlr56u7cj63lf3wffbilvqknstgtvzub7vhqkggq",
     "Endorse dynamic-group ${oci_identity_dynamic_group.rclone_dg.name} to read objects in tenancy usage-report",
     "Endorse dynamic-group ${oci_identity_dynamic_group.rclone_dg.name} to read buckets in tenancy usage-report",
-    "Allow dynamic-group ${oci_identity_dynamic_group.rclone_dg.name} to use secret-bundles in compartment id ${local.compartment_id}"
+    "Allow dynamic-group ${oci_identity_dynamic_group.rclone_dg.name} to use secret-bundles in compartment id ${local.compartment_id}",
+    "Allow dynamic-group ${oci_identity_dynamic_group.rclone_dg.name} to use ons-topics in compartment id ${local.compartment_id}"
   ]
 }
