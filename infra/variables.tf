@@ -264,7 +264,7 @@ variable "aws_region" {
 # Observability / Monitoring
 # -----------------------------------------------------------------------------
 variable "enable_monitoring" {
-  description = "Enable notification topic, email subscription, log group, and log-based alerting"
+  description = "Enable OCI notification topic and email alerts for sync/bootstrap failures"
   type        = bool
   default     = true
 }

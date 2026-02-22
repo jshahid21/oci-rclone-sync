@@ -38,15 +38,19 @@ write_files:
       OCI_BIN="$(command -v oci 2>/dev/null)"
       [[ -z "$${OCI_BIN}" ]] && OCI_BIN="/usr/local/bin/oci"
 
+      alert_on_exit() {
+        code=$$?
+        if [ "$${code}" -ne 0 ] && [ -n "${alert_topic_id}" ]; then
+          $${OCI_BIN} ons message publish --topic-id "${alert_topic_id}" --auth instance_principal \
+            --body "Rclone sync FAILED (exit $$code). Check /var/log/rclone-sync.log on $(hostname)" 2>/dev/null || true
+        fi
+      }
+      trap alert_on_exit EXIT
+
       export AWS_ACCESS_KEY_ID=$($${OCI_BIN} secrets secret-bundle get --secret-id ${aws_access_key_secret_id} --auth instance_principal --query 'data."secret-bundle-content".content' --raw-output | base64 --decode | tr -d '\n\r\t ')
       export AWS_SECRET_ACCESS_KEY=$($${OCI_BIN} secrets secret-bundle get --secret-id ${aws_secret_key_secret_id} --auth instance_principal --query 'data."secret-bundle-content".content' --raw-output | base64 --decode | tr -d '\n\r\t ')
 
-      if ! /usr/local/bin/rclone sync oci_usage:${tenancy_ocid} aws_s3:${aws_s3_bucket_name}/${aws_s3_prefix} --log-file=/var/log/rclone-sync.log --checksum --s3-chunk-size 64M --s3-upload-concurrency 8 -v; then
-        if [ -n "${alert_topic_id}" ]; then
-          $${OCI_BIN} ons message publish --topic-id "${alert_topic_id}" --body "Rclone sync FAILED. Check /var/log/rclone-sync.log on $(hostname)" 2>/dev/null || true
-        fi
-        exit 1
-      fi
+      /usr/local/bin/rclone sync oci_usage:${tenancy_ocid} aws_s3:${aws_s3_bucket_name}/${aws_s3_prefix} --log-file=/var/log/rclone-sync.log --checksum --s3-chunk-size 64M --s3-upload-concurrency 8 -v
 
   - path: /usr/local/bin/bootstrap-oci-sync.sh
     owner: root:root
@@ -60,6 +64,16 @@ write_files:
       dnf install -y unzip jq python3-pip
       pip3 install --break-system-packages --no-cache-dir oci-cli 2>/dev/null || pip3 install --no-cache-dir oci-cli 2>/dev/null || true
 
+      OCI_BIN="$(command -v oci 2>/dev/null)"
+      alert_on_bootstrap_fail() {
+        code=$$?
+        if [ "$${code}" -ne 0 ] && [ -n "${alert_topic_id}" ] && [ -n "$${OCI_BIN}" ]; then
+          $${OCI_BIN} ons message publish --topic-id "${alert_topic_id}" --auth instance_principal \
+            --body "Bootstrap FAILED (exit $$code). Check /var/log/cloud-init-bootstrap.log on $(hostname)" 2>/dev/null || true
+        fi
+      }
+      trap alert_on_bootstrap_fail EXIT
+
       ARCH=$(uname -m)
       [[ "$${ARCH}" == "aarch64" ]] && RCLONE_ARCH=arm64 || RCLONE_ARCH=amd64
       curl -sLO "https://downloads.rclone.org/rclone-current-linux-$${RCLONE_ARCH}.zip"
@@ -72,7 +86,7 @@ write_files:
       echo "0 */6 * * * root /usr/local/bin/sync.sh >> /var/log/rclone-sync.log 2>&1" >> /etc/crontab
 
       echo "=== Bootstrap done, first sync ==="
-      /usr/local/bin/sync.sh || echo "First sync failed - check /var/log/rclone-sync.log"
+      /usr/local/bin/sync.sh
 
   - path: /etc/systemd/system/oci-sync-bootstrap.service
     owner: root:root

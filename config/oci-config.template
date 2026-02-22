@@ -1,9 +1,0 @@
-# OCI CLI config — for running tofu apply only.
-# Copy to ~/.oci/config. Get values from OCI Console → Profile → API Keys
-
-[DEFAULT]
-user=ocid1.user.oc1..aaaa...
-fingerprint=00:11:22:33:44:55:66:77:88:99:aa:bb:cc:dd:ee:ff
-tenancy=ocid1.tenancy.oc1..aaaa...
-region=us-ashburn-1
-key_file=~/.oci/oci_api_key.pem

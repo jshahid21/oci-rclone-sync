@@ -7,7 +7,7 @@ Syncs Oracle Cloud (OCI) cost and usage reports to an AWS S3 bucket. Runs automa
 | Requirement | Purpose |
 |-------------|---------|
 | **OpenTofu** | `brew install opentofu` (Mac) or [opentofu.org](https://opentofu.org/docs/intro/install/) |
-| **OCI account** | With an API key in `~/.oci/config` (for running the setup only) |
+| **OCI account** | API key in `~/.oci/config` (for `tofu apply` only; create via OCI Console → Profile → API Keys) |
 | **AWS IAM user** | Access Key + Secret Key with S3 write permission |
 | **S3 bucket** | Created in AWS; the sync will create a folder inside it |
 
@@ -25,7 +25,7 @@ Open `terraform.tfvars` and fill in:
 - `region`, `tenancy_ocid`, `existing_compartment_id` — from your OCI console
 - `aws_s3_bucket_name`, `aws_region` — your S3 bucket and its region
 - `aws_access_key`, `aws_secret_key` — AWS IAM user credentials (they go into OCI Vault, not on the VM)
-- `alert_email_address` — optional; get email if a sync fails
+- `alert_email_address` — get email when bootstrap, sync, or cron run fails
 
 ### 2. Run the setup
 
@@ -58,6 +58,17 @@ sudo tail /var/log/rclone-sync.log
 | SSH to VM | Use the `bastion_ssh_command` output after apply |
 | See cron schedule | `sudo grep rclone /etc/crontab` |
 | Run sync manually | `sudo /usr/local/bin/sync.sh` |
+
+## Alerts
+
+When `enable_monitoring = true` and `alert_email_address` is set, you get email alerts for:
+
+- **Bootstrap failure** — dnf, rclone install, or first sync failed at VM boot. Check `/var/log/cloud-init-bootstrap.log`.
+- **Sync failure** — credential fetch, rclone, or cron run failed. Check `/var/log/rclone-sync.log`.
+
+**First-time setup:** OCI sends a confirmation email for the subscription. Click the link to activate alerts.
+
+**Test alert** (on VM): `oci ons message publish --topic-id <topic_ocid> --body "Test" --auth instance_principal`
 
 ## AWS IAM Policy
 
