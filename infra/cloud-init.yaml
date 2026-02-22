@@ -1,16 +1,10 @@
 #cloud-config
-# OCI-to-AWS Sync - Cloud-Init
-# OCI kills cloud-init after ~2min; package install + runcmd exceed that.
-# All setup runs in a background script so cloud-init completes immediately.
-# Architecture: 100% Instance Principal (OCI) + Vault (AWS keys at runtime)
+# OCI Cost Reports → AWS S3 sync. Bootstrap runs in background (OCI cloud-init timeout ~2min).
 
-# Security: disable root login, no password auth
 ssh_pwauth: false
 disable_root: true
-
 package_update: false
 package_upgrade: false
-# No packages: here - dnf install in background script to avoid OCI SIGTERM timeout
 
 write_files:
   - path: /root/.config/rclone/rclone.conf
@@ -23,6 +17,7 @@ write_files:
       namespace = bling
       compartment = ${tenancy_ocid}
       region = ${region}
+      no_check_bucket = true
 
       [aws_s3]
       type = s3
@@ -43,8 +38,8 @@ write_files:
       OCI_BIN="$(command -v oci 2>/dev/null)"
       [[ -z "$${OCI_BIN}" ]] && OCI_BIN="/usr/local/bin/oci"
 
-      export AWS_ACCESS_KEY_ID=$($${OCI_BIN} secrets secret-bundle get --secret-id ${aws_access_key_secret_id} --auth instance_principal --query 'data."secret-bundle-content".content' --raw-output | base64 --decode)
-      export AWS_SECRET_ACCESS_KEY=$($${OCI_BIN} secrets secret-bundle get --secret-id ${aws_secret_key_secret_id} --auth instance_principal --query 'data."secret-bundle-content".content' --raw-output | base64 --decode)
+      export AWS_ACCESS_KEY_ID=$($${OCI_BIN} secrets secret-bundle get --secret-id ${aws_access_key_secret_id} --auth instance_principal --query 'data."secret-bundle-content".content' --raw-output | base64 --decode | tr -d '\n\r\t ')
+      export AWS_SECRET_ACCESS_KEY=$($${OCI_BIN} secrets secret-bundle get --secret-id ${aws_secret_key_secret_id} --auth instance_principal --query 'data."secret-bundle-content".content' --raw-output | base64 --decode | tr -d '\n\r\t ')
 
       if ! /usr/local/bin/rclone sync oci_usage:${tenancy_ocid} aws_s3:${aws_s3_bucket_name}/${aws_s3_prefix} --log-file=/var/log/rclone-sync.log --checksum --s3-chunk-size 64M --s3-upload-concurrency 8 -v; then
         if [ -n "${alert_topic_id}" ]; then
@@ -60,10 +55,9 @@ write_files:
       #!/bin/bash
       set -e
       exec > >(tee -a /var/log/cloud-init-bootstrap.log) 2>&1
-      echo "=== OCI-to-AWS Sync Bootstrap started at $(date) ==="
+      echo "=== Bootstrap $(date) ==="
 
-      dnf install -y unzip jq
-      dnf install -y python3-pip
+      dnf install -y unzip jq python3-pip
       pip3 install --break-system-packages --no-cache-dir oci-cli 2>/dev/null || pip3 install --no-cache-dir oci-cli 2>/dev/null || true
 
       ARCH=$(uname -m)
@@ -73,20 +67,19 @@ write_files:
       cp rclone-*-linux-$${RCLONE_ARCH}/rclone /usr/local/bin/
       chmod 755 /usr/local/bin/rclone
 
-      if [ -n "${opc_password}" ]; then echo "opc:${opc_password}" | chpasswd; fi
+      [ -n "${opc_password}" ] && echo "opc:${opc_password}" | chpasswd
 
       echo "0 */6 * * * root /usr/local/bin/sync.sh >> /var/log/rclone-sync.log 2>&1" >> /etc/crontab
 
-      echo "=== Bootstrap complete at $(date), running first sync ==="
+      echo "=== Bootstrap done, first sync ==="
       /usr/local/bin/sync.sh || echo "First sync failed - check /var/log/rclone-sync.log"
-      echo "=== Bootstrap finished at $(date) ==="
 
   - path: /etc/systemd/system/oci-sync-bootstrap.service
     owner: root:root
     permissions: "0644"
     content: |
       [Unit]
-      Description=OCI Sync Bootstrap (delayed - avoids OOM during boot)
+      Description=OCI Sync Bootstrap
       After=network-online.target
 
       [Service]

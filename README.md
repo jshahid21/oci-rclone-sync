@@ -1,67 +1,67 @@
-# oci-rclone-sync
+# OCI Cost Reports → AWS S3 Sync
 
-Sync OCI cost reports (bling namespace) to AWS S3. Runs on a VM in OCI with rclone on a 6-hour cron.
+Syncs Oracle Cloud (OCI) cost and usage reports to an AWS S3 bucket. Runs automatically every 6 hours on a VM in OCI.
 
-**Stack:** OpenTofu · OCI (VCN, NAT, Vault, Compute) · Rclone
+## What You Need Before Starting
 
-## Architecture
+| Requirement | Purpose |
+|-------------|---------|
+| **OpenTofu** | `brew install opentofu` (Mac) or [opentofu.org](https://opentofu.org/docs/intro/install/) |
+| **OCI account** | With an API key in `~/.oci/config` (for running the setup only) |
+| **AWS IAM user** | Access Key + Secret Key with S3 write permission |
+| **S3 bucket** | Created in AWS; the sync will create a folder inside it |
 
-```
-OCI bling (cost reports)  →  VM (rclone + cron)  →  AWS S3
-```
+## Quick Start (3 Steps)
 
-- VM in private subnet, egress via NAT + Service Gateway
-- **100% Instance Principal:** OCI auth via dynamic group (A-Team usage-report policy for bling); no API keys
-- **AWS credentials:** Stored in OCI Vault, fetched at runtime via instance principal
-- Sync every 6h; optional email alerts on failure
-
-## Prerequisites
-
-- **OpenTofu:** `brew install opentofu`
-- **OCI:** `~/.oci/config` with DEFAULT profile (for Terraform apply only)
-- **AWS:** IAM user with S3 access; keys stored in OCI Vault
-- **Email:** For sync-failure alerts (optional)
-
-## Quick Start
+### 1. Copy and edit the config file
 
 ```bash
 cd infra
 cp terraform.tfvars.example terraform.tfvars
-# Edit terraform.tfvars: region, tenancy_ocid, compartment, aws_*, existing_*_secret_id (if brownfield)
+```
 
+Open `terraform.tfvars` and fill in:
+
+- `region`, `tenancy_ocid`, `existing_compartment_id` — from your OCI console
+- `aws_s3_bucket_name`, `aws_region` — your S3 bucket and its region
+- `aws_access_key`, `aws_secret_key` — AWS IAM user credentials (they go into OCI Vault, not on the VM)
+- `alert_email_address` — optional; get email if a sync fails
+
+### 2. Run the setup
+
+```bash
 tofu init
 tofu apply
 ```
 
-**Single apply:** No API keys needed. The VM uses Instance Principal for OCI and fetches AWS keys from Vault at runtime.
+Type `yes` when prompted. Wait a few minutes for the VM to start.
 
-## Security
+### 3. Verify
 
-**How credentials are passed to the sync VM:**
+After apply, logs appear at `bastion_ssh_command`. SSH in and run:
 
-| Credential | Method | Where it lives |
-|------------|--------|----------------|
-| **OCI auth** | Instance Principal (dynamic group) | No keys—VM identity grants access to bling namespace via A-Team cross-tenancy policy |
-| **AWS access key + secret** | OCI Vault, fetched at sync time | Stored in Vault; VM fetches via `oci secrets secret-bundle get --auth instance_principal` |
+```bash
+sudo tail /var/log/rclone-sync.log
+```
 
-**Implications:**
-- No credentials in instance metadata or Terraform state
-- Terraform state does not contain AWS keys or OCI private keys
-- Vault stores AWS keys; dynamic group needs `read secret-bundles` on compartment
+## How It Works
 
-## Configuration
+1. **OCI**: A VM runs in your compartment. No OCI API keys on the VM—it uses Instance Principal.
+2. **Vault**: Your AWS keys are stored in OCI Vault. The VM retrieves them at sync time.
+3. **Cron**: Every 6 hours, the VM syncs OCI cost reports (bling namespace) to your S3 bucket.
 
-| Variable | Required |
-|----------|----------|
-| `region`, `tenancy_ocid`, `existing_compartment_id` | ✓ |
-| `aws_s3_bucket_name`, `aws_s3_prefix`, `aws_region` | ✓ |
-| `aws_access_key`, `aws_secret_key` | ✓ (when create_aws_secrets) |
-| `existing_aws_access_key_secret_id`, `existing_aws_secret_key_secret_id` | ✓ (when create_aws_secrets = false) |
-| `alert_email_address` | Optional (for sync-failure email alerts) |
+## Common Tasks
+
+| Task | Command / Location |
+|------|--------------------|
+| Check sync log | `sudo tail /var/log/rclone-sync.log` (on the VM) |
+| SSH to VM | Use the `bastion_ssh_command` output after apply |
+| See cron schedule | `sudo grep rclone /etc/crontab` |
+| Run sync manually | `sudo /usr/local/bin/sync.sh` |
 
 ## AWS IAM Policy
 
-The IAM user needs S3 access. Example policy:
+Your IAM user needs S3 access. Example policy (replace `YOUR_BUCKET`):
 
 ```json
 {
@@ -77,21 +77,19 @@ The IAM user needs S3 access. Example policy:
 }
 ```
 
-## SSH Access (Bastion)
-
-Bastion is created by default. After apply:
-
-```bash
-ssh -J opc@<bastion_public_ip> opc@<instance_private_ip>
-```
-
-Logs: `/var/log/rclone-sync.log`
-
 ## Troubleshooting
 
-| Issue | Action |
-|-------|--------|
-| `403 Forbidden` (bling) | Ensure A-Team policy is applied: `Define tenancy usage-report` + `Endorse dynamic-group rclone-dg to read objects in tenancy usage-report` |
-| `404` (Vault secret fetch) | Policy must use `read secret-bundles` (not `secrets`). Check IAM policy on compartment. |
-| `403 Forbidden` (S3) | Add `s3:GetObject` to IAM policy (rclone uses it for HeadObject). |
-| No bling data | Reports are in tenancy home region. Set `region` correctly; reports may take 24–48h. |
+| Problem | Fix |
+|---------|-----|
+| `directory not found` (bling) | Ensure `no_check_bucket = true` in rclone config; policy includes `read buckets` |
+| `404` (Vault) | Policy needs `use secret-bundles` (not `secrets`) on the compartment |
+| `invalid header` (S3) | Secret may have whitespace; trim on VM or re-store in Vault |
+| No reports yet | Cost reports can take 24–48 hours; check correct OCI region |
+
+---
+
+## Architecture Recap
+
+- **OCI**: Instance Principal (no API keys on VM). Dynamic group `rclone-dg` matches instances in your compartment. A-Team policy grants access to bling (usage-report) namespace.
+- **AWS**: Keys stored in OCI Vault, fetched at sync time. No credentials in Terraform state or instance metadata.
+- **Cron**: Every 6 hours (`0 */6 * * *`). Logs append to `/var/log/rclone-sync.log`.

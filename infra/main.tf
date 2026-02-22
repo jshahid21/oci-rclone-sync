@@ -1,11 +1,4 @@
-# =============================================================================
-# OCI-to-AWS Sync - VM + Rclone (cron every 6h)
-# Hybrid: create new resources (Greenfield) or use existing IDs (Brownfield)
-# =============================================================================
-
-# -----------------------------------------------------------------------------
-# Locals
-# -----------------------------------------------------------------------------
+# OCI Cost Reports → AWS S3. VM + rclone, cron every 6h.
 locals {
   compartment_id = var.create_compartment ? oci_identity_compartment.this[0].id : var.existing_compartment_id
   vcn_id         = var.create_vcn ? oci_core_vcn.this[0].id : var.existing_vcn_id

@@ -1,68 +1,33 @@
-# =============================================================================
-# OCI-to-AWS Sync - VM + Rclone Architecture
-# Copy to terraform.tfvars (or tofu.tfvars) and customize
-# =============================================================================
+# Copy to terraform.tfvars and fill in your values
 
 region       = "us-ashburn-1"
 tenancy_ocid = "ocid1.tenancy.oc1..aaaa..."
 
-# -----------------------------------------------------------------------------
-# Compartment
-# -----------------------------------------------------------------------------
 create_compartment      = false
 existing_compartment_id = "ocid1.compartment.oc1..aaaa..."
-compartment_name        = ""
 
-# -----------------------------------------------------------------------------
-# Network: create_* = true for greenfield; false + existing_*_id for brownfield
-# -----------------------------------------------------------------------------
 create_vcn                 = true
 existing_vcn_id            = ""
 create_subnet              = true
 existing_subnet_id         = ""
 create_nat_gateway         = true
 existing_nat_gateway_id    = ""
-create_service_gateway    = true
+create_service_gateway     = true
 existing_service_gateway_id = ""
 
-# -----------------------------------------------------------------------------
-# Bastion (SSH access to private instance)
-# -----------------------------------------------------------------------------
-# create_bastion              = true
-# bastion_ssh_public_key_path = "~/.ssh/id_rsa.pub"
-# bastion_subnet_cidr         = "10.0.2.0/24"
-
-# -----------------------------------------------------------------------------
-# Vault: Create or use existing
-# -----------------------------------------------------------------------------
 create_vault      = true
 existing_vault_id = ""
 create_key        = true
 existing_key_id   = ""
 
-# -----------------------------------------------------------------------------
-# AWS Credentials
-# -----------------------------------------------------------------------------
-create_aws_secrets                = true
+create_aws_secrets               = true
 existing_aws_access_key_secret_id  = ""
 existing_aws_secret_key_secret_id  = ""
-# When create_aws_secrets = true, add:
 aws_access_key = "AKIA..."
 aws_secret_key = "your-secret-here"
 
-# Architecture: 100% Instance Principal for OCI (A-Team usage-report policy)
-# AWS keys are stored in Vault and fetched at runtime via instance principal
-
-# -----------------------------------------------------------------------------
-# Optional: opc_password = "..." for Serial Console login
-# Optional: enable_monitoring = false to disable log streaming and alerts
 alert_email_address = "you@example.com"
-# Optional: instance_shape = "VM.Standard.A1.Flex" for free tier
-# -----------------------------------------------------------------------------
 
-# -----------------------------------------------------------------------------
-# AWS Destination
-# -----------------------------------------------------------------------------
 aws_s3_bucket_name = "my-oci-cost-reports"
 aws_s3_prefix      = "oci-sync"
 aws_region         = "us-east-2"

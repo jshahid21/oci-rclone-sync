@@ -1,14 +1,9 @@
-# OCI CLI Config Template
-# Copy to ~/.oci/config and fill in your values
-# Or set OCI_CLI_CONFIG_FILE to use a project-local config
-#
-# To get these values:
-# - tenancy, user, fingerprint, key_file: OCI Console → Profile → API Keys → Add API Key
-# - region: Your preferred region (e.g. us-ashburn-1)
+# OCI CLI config — for running tofu apply only.
+# Copy to ~/.oci/config. Get values from OCI Console → Profile → API Keys
 
 [DEFAULT]
-user=ocid1.user.oc1..aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+user=ocid1.user.oc1..aaaa...
 fingerprint=00:11:22:33:44:55:66:77:88:99:aa:bb:cc:dd:ee:ff
-tenancy=ocid1.tenancy.oc1..aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+tenancy=ocid1.tenancy.oc1..aaaa...
 region=us-ashburn-1
 key_file=~/.oci/oci_api_key.pem

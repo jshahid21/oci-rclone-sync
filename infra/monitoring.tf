@@ -1,7 +1,3 @@
-# -----------------------------------------------------------------------------
-# Monitoring - Notification topic and email subscription for sync failure alerts
-# -----------------------------------------------------------------------------
-
 resource "oci_ons_notification_topic" "rclone_alerts" {
   count = var.enable_monitoring ? 1 : 0
 
