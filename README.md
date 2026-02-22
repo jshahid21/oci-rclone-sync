@@ -50,6 +50,14 @@ sudo tail /var/log/rclone-sync.log
 2. **Vault**: Your AWS keys are stored in OCI Vault. The VM retrieves them at sync time.
 3. **Cron**: Every 6 hours, the VM syncs OCI cost reports (bling namespace) to your S3 bucket.
 
+## Security (Financial Data)
+
+- **VM**: No AWS keys on disk; keys are fetched from OCI Vault at sync time (memory only). OCI uses Instance Principal—no API keys on the VM.
+- **Transit**: rclone uses HTTPS for OCI Object Storage and S3.
+- **OCI Vault**: AWS keys are encrypted at rest with KMS.
+
+**Important:** Terraform state and `terraform.tfvars` can contain plaintext AWS credentials. Use a remote encrypted backend for state and restrict access. See [ARCHITECTURE.md](ARCHITECTURE.md#8-security-details) for details.
+
 ## Common Tasks
 
 | Task | Command / Location |
@@ -102,7 +110,7 @@ Your IAM user needs S3 access. Example policy (replace `YOUR_BUCKET`):
 ## Architecture Recap
 
 - **OCI**: Instance Principal (no API keys on VM). Dynamic group `rclone-dg` matches instances in your compartment. A-Team policy grants access to bling (usage-report) namespace.
-
-**Maintainers:** See [ARCHITECTURE.md](ARCHITECTURE.md) for a file-by-file breakdown of components and maintenance tasks.
-- **AWS**: Keys stored in OCI Vault, fetched at sync time. No credentials in Terraform state or instance metadata.
+- **AWS**: Keys stored in OCI Vault, fetched at sync time. No credentials in instance metadata.
 - **Cron**: Every 6 hours (`0 */6 * * *`). Logs append to `/var/log/rclone-sync.log`.
+
+**Maintainers:** See [ARCHITECTURE.md](ARCHITECTURE.md) for a file-by-file breakdown of components, maintenance tasks, and security details.

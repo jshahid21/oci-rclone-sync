@@ -8,21 +8,21 @@ This document explains every component for someone maintaining this project. Sta
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│  OCI bling (cost reports)                                                    │
-│  Restricted namespace — requires special IAM policy                          │
+│  OCI bling (cost reports)                                                   │
+│  Restricted namespace — requires special IAM policy                         │
 └─────────────────────────────────┬───────────────────────────────────────────┘
                                   │
                                   ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│  Sync VM (Oracle Linux)                                                      │
-│  • Instance Principal = no OCI API keys on the VM                            │
+│  Sync VM (Oracle Linux)                                                     │
+│  • Instance Principal = no OCI API keys on the VM                           │
 │  • Fetches AWS keys from OCI Vault at sync time                             │
 │  • rclone syncs bling → S3 every 6 hours (cron)                             │
 └─────────────────────────────────┬───────────────────────────────────────────┘
                                   │
                                   ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│  AWS S3 bucket                                                               │
+│  AWS S3 bucket                                                              │
 │  Your cost reports land in aws_s3_bucket_name / aws_s3_prefix               │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -203,7 +203,37 @@ Bling (cost reports) lives in a restricted Oracle tenancy. The policy:
 
 ---
 
-## 7. Project Structure Summary
+## 8. Security Details
+
+This project handles cost/usage reports (financial data). Key considerations:
+
+### What's Protected
+
+| Area | Status |
+|------|--------|
+| **VM** | No AWS keys on disk. Keys exist only in process memory during sync; fetched from Vault at runtime via Instance Principal. |
+| **Instance metadata** | Only secret OCIDs (not the actual keys) are in user_data. |
+| **OCI Vault** | Keys encrypted at rest with KMS. |
+| **Transit** | rclone uses HTTPS for both OCI Object Storage and S3. |
+| **Logs** | rclone does not log credentials. |
+
+### Risks & Mitigations
+
+| Risk | Mitigation |
+|------|------------|
+| **Terraform state** contains `aws_access_key`, `aws_secret_key`, and secret content. Anyone with state access can recover keys. | Use a **remote backend** (S3, GCS) with encryption at rest. Use state locking (e.g. DynamoDB for S3). Restrict who can read the backend. Never commit `*.tfstate`. |
+| **terraform.tfvars** holds plaintext AWS keys on disk. | Keep tfvars gitignored (it is). Consider `TF_VAR_aws_access_key` / `TF_VAR_aws_secret_key` from env or a secrets manager in CI. Restrict filesystem access. |
+| **S3 destination** receives the reports. | Enable default encryption, restrict bucket policy, enable access logging. Scope AWS IAM to minimal S3 permissions. |
+
+### Operational
+
+- **IAM scope**: AWS credentials should have least privilege (only required S3 actions and bucket).
+- **Key rotation**: Update `aws_access_key` / `aws_secret_key` in tfvars and run `tofu apply`; Vault secrets are updated in place.
+- **Audit**: Track who can access Terraform state, Vault, and the S3 bucket.
+
+---
+
+## 9. Project Structure Summary
 
 ```
 oci-rclone-sync/
